@@ -194,3 +194,199 @@ function setStatus(type, msg) {
 // ═══════════════════════════════════════════════════
 window.onload = loadAll;
 </script>
+// ═══════════════════════════════════════════════════
+// UI STATE & FILTERS
+// ═══════════════════════════════════════════════════
+let PLAYERS = []; 
+let GAMES = [];   
+let selectedId = null;
+let gameFilter = 'live';
+let filt = { pos: 'all', levels: ['MLB'], q: '' };
+
+// ═══════════════════════════════════════════════════
+// CORE FUNCTIONS
+// ═══════════════════════════════════════════════════
+
+function showSection(id, btn) {
+    // セクションの切り替え
+    ['section-trends', 'section-scores', 'section-search'].forEach(s => {
+        document.getElementById(s).style.display = 'none';
+    });
+    document.getElementById('section-' + id).style.display = 'block';
+    
+    // ボタンのアクティブ状態
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (id === 'scores') renderAllGames();
+    if (id === 'search') dbSearch('');
+}
+
+function setPos(pos, btn) {
+    filt.pos = pos;
+    updateFilterButtons(btn, '.filter-row:first-of-type .filter-btn');
+    renderTable();
+}
+
+function toggleLevel(lvl, btn) {
+    if (filt.levels.includes(lvl)) {
+        filt.levels = filt.levels.filter(l => l !== lvl);
+        btn.classList.remove('on');
+    } else {
+        filt.levels.push(lvl);
+        btn.classList.add('on');
+    }
+    renderTable();
+}
+
+function setSearch(val) {
+    filt.q = val.toLowerCase();
+    renderTable();
+}
+
+function updateFilterButtons(activeBtn, selector) {
+    document.querySelectorAll(selector).forEach(b => b.classList.remove('on'));
+    activeBtn.classList.add('on');
+}
+
+// ═══════════════════════════════════════════════════
+// RENDERING - TREND TABLE
+// ═══════════════════════════════════════════════════
+
+function renderTable() {
+    const container = document.getElementById('trend-table');
+    const header = container.querySelector('.hdr');
+    container.innerHTML = '';
+    container.appendChild(header);
+
+    const filtered = PLAYERS.filter(p => {
+        const matchPos = filt.pos === 'all' || p.pos === filt.pos || (filt.pos === 'INF' && ['1B','2B','3B','SS'].includes(p.pos));
+        const matchLvl = filt.levels.includes(p.level);
+        const matchSearch = p.name.toLowerCase().includes(filt.q) || p.team.toLowerCase().includes(filt.q);
+        return matchPos && matchLvl && matchSearch;
+    }).sort((a, b) => b.trendScore - a.trendScore);
+
+    filtered.forEach((p, idx) => {
+        const info = getTrendLabel(p);
+        const row = document.createElement('div');
+        row.className = `trend-row ${selectedId === p.id ? 'selected' : ''}`;
+        row.onclick = () => showDetail(p);
+        
+        row.innerHTML = `
+            <div class="rank ${idx < 3 ? 'top' : ''}">${idx + 1}</div>
+            <div>
+                <div class="p-name">${p.name} <span class="badge-level badge-${p.level.toLowerCase().replace('+', '')}">${p.level}</span></div>
+                <div class="p-meta">${p.team} • ${p.pos} • Age ${p.age}</div>
+            </div>
+            <div class="stat-cell" style="color:${info.col}">${info.text}</div>
+            <div class="stat-cell">${info.to}</div>
+            <div class="trend-cell">
+                <div class="trend-bar"><div class="trend-fill t-${p.trendDir}" style="width:${p.trendScore}%"></div></div>
+                <div class="trend-num">${p.trendScore}</div>
+            </div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+// ═══════════════════════════════════════════════════
+// RENDERING - DETAIL PANEL
+// ═══════════════════════════════════════════════════
+
+function showDetail(p) {
+    selectedId = p.id;
+    renderTable(); // Update selection styling
+    
+    const panel = document.getElementById('detail-panel');
+    panel.style.display = 'block';
+    
+    document.getElementById('d-name').textContent = p.name;
+    document.getElementById('d-sub').textContent = `${p.level} | ${p.org} | #${p.id}`;
+    
+    const statsGrid = document.getElementById('d-stats');
+    statsGrid.innerHTML = '';
+    
+    const metrics = p.isPit 
+        ? [{l:'ERA', v:p.era, d:p.weekEra, rev:true}, {l:'WHIP', v:p.whip, d:p.weekWhip, rev:true}, {l:'K/9', v:p.k9}, {l:'IP', v:p.ip}]
+        : [{l:'AVG', v:p.avg, d:p.weekAvg}, {l:'OPS', v:p.ops, d:p.weekOps}, {l:'HR', v:p.hr}, {l:'RBI', v:p.rbi}];
+
+    metrics.forEach(m => {
+        const delta = m.d ? (m.v - m.d).toFixed(3) : null;
+        let deltaClass = 'neu';
+        if (delta > 0) deltaClass = m.rev ? 'dn' : 'up';
+        if (delta < 0) deltaClass = m.rev ? 'up' : 'dn';
+
+        statsGrid.innerHTML += `
+            <div class="stat-box">
+                <div class="s-lbl">${m.l}</div>
+                <div class="s-val">${typeof m.v === 'number' && m.v < 1 && m.l.includes('A') ? fmtAvg(m.v) : m.v}</div>
+                <div class="s-delta ${deltaClass}">${delta > 0 ? '+'+delta : delta || ''}</div>
+            </div>
+        `;
+    });
+
+    renderSpark(p);
+}
+
+function renderSpark(p) {
+    const container = document.getElementById('d-spark');
+    const labelRow = document.getElementById('d-spark-lbl');
+    container.innerHTML = '';
+    labelRow.innerHTML = '';
+    
+    const max = Math.max(...p.spark);
+    const min = Math.min(...p.spark);
+    
+    p.spark.forEach((val, i) => {
+        const height = ((val - min) / (max - min || 1) * 80) + 20;
+        const barWrap = document.createElement('div');
+        barWrap.className = 'spark-bar-wrap';
+        barWrap.innerHTML = `
+            <div class="spark-val ${i === 9 ? 'hl' : ''}">${p.isPit ? val : fmtAvg(val)}</div>
+            <div class="spark-bar" style="height:${height}%; background:${i === 9 ? 'var(--accent)' : 'var(--bg3)'}; border:1px solid var(--border2)"></div>
+        `;
+        container.appendChild(barWrap);
+        
+        const lbl = document.createElement('div');
+        lbl.className = 'spark-game-lbl';
+        lbl.textContent = `G${i+1}`;
+        labelRow.appendChild(lbl);
+    });
+}
+
+function closeDetail() {
+    document.getElementById('detail-panel').style.display = 'none';
+    selectedId = null;
+    renderTable();
+}
+
+// ═══════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════
+
+function fmtAvg(v) {
+    if (v == null) return '.---';
+    return '.' + Math.round(v * 1000).toString().padStart(3, '0');
+}
+
+function setRefreshSpin(active) {
+    const icon = document.getElementById('refresh-icon');
+    if (active) icon.classList.add('spin');
+    else icon.classList.remove('spin');
+}
+
+function updateTime() {
+    const now = new Date();
+    document.getElementById('hero-time').textContent = now.toLocaleTimeString('ja-JP', { hour12: false, hour: '2-digit', minute: '2-digit' });
+}
+
+function setStatus(type, msg) {
+    const container = document.getElementById('api-status');
+    container.innerHTML = `<div class="status-banner ${type}">${msg}</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// BOOTSTRAP
+// ═══════════════════════════════════════════════════
+window.onload = loadAll;
+</script>
