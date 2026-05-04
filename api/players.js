@@ -43,7 +43,7 @@ module.exports = async function handler(req, res) {
               team:  leader.team?.abbreviation || leader.team?.name?.slice(0,3).toUpperCase() || '?',
               level: sport.level,
               isPit,
-              pos:   isPit ? 'P' : null,
+              pos:   isPit ? 'SP' : null,
               avg:  null, ops: null, hr: null,
               era:  null, k9: null,
             };
@@ -60,9 +60,9 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // ポジション未設定の打者だけIDを収集して一括取得
+    // 打者のポジション取得（一括）
     const batters = allPlayers.filter(p => !p.isPit && !p.pos);
-    const ids = [...new Set(batters.map(p => p.id))].slice(0, 50);
+    const ids = [...new Set(batters.map(p => p.id))].slice(0, 60);
 
     if (ids.length > 0) {
       const peopleUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids.join(',')}&hydrate=currentTeam`;
@@ -78,9 +78,27 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // posがまだnullの打者はOFにフォールバック
+    // 投手のSP/RP判定
+    const pitchers = allPlayers.filter(p => p.isPit);
+    const pitIds = [...new Set(pitchers.map(p => p.id))].slice(0, 60);
+    if (pitIds.length > 0) {
+      const pitPeopleUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${pitIds.join(',')}&hydrate=currentTeam`;
+      const pitPeopleRes = await fetch(pitPeopleUrl);
+      if (pitPeopleRes.ok) {
+        const pitPeopleData = await pitPeopleRes.json();
+        for (const person of (pitPeopleData.people || [])) {
+          const player = allPlayers.find(p => p.id === person.id);
+          if (player) {
+            const pos = person.primaryPosition?.abbreviation || 'SP';
+            player.pos = (pos === 'RP' || pos === 'CL') ? 'RP' : 'SP';
+          }
+        }
+      }
+    }
+
+    // フォールバック
     for (const p of allPlayers) {
-      if (!p.pos) p.pos = 'OF';
+      if (!p.pos) p.pos = p.isPit ? 'SP' : 'OF';
     }
 
     const scored = allPlayers.map(p => {
