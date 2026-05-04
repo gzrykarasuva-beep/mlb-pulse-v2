@@ -17,11 +17,11 @@ module.exports = async function handler(req, res) {
 
     for (const sport of sportIds) {
       const categories = [
-        { cat: 'battingAverage',       group: 'hitting'  },
-        { cat: 'onBasePlusSlugging',   group: 'hitting'  },
-        { cat: 'homeRuns',             group: 'hitting'  },
-        { cat: 'earnedRunAverage',     group: 'pitching' },
-        { cat: 'strikeoutsPer9Inn',    group: 'pitching' },
+        { cat: 'battingAverage',     group: 'hitting'  },
+        { cat: 'onBasePlusSlugging', group: 'hitting'  },
+        { cat: 'homeRuns',           group: 'hitting'  },
+        { cat: 'earnedRunAverage',   group: 'pitching' },
+        { cat: 'strikeoutsPer9Inn',  group: 'pitching' },
       ];
 
       for (const { cat, group } of categories) {
@@ -43,6 +43,7 @@ module.exports = async function handler(req, res) {
               team:  leader.team?.abbreviation || leader.team?.name?.slice(0,3).toUpperCase() || '?',
               level: sport.level,
               isPit,
+              pos:   isPit ? 'P' : null,
               avg:  null, ops: null, hr: null,
               era:  null, k9: null,
             };
@@ -57,6 +58,29 @@ module.exports = async function handler(req, res) {
           }
         }
       }
+    }
+
+    // ポジション未設定の打者だけIDを収集して一括取得
+    const batters = allPlayers.filter(p => !p.isPit && !p.pos);
+    const ids = [...new Set(batters.map(p => p.id))].slice(0, 50);
+
+    if (ids.length > 0) {
+      const peopleUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids.join(',')}&hydrate=currentTeam`;
+      const peopleRes = await fetch(peopleUrl);
+      if (peopleRes.ok) {
+        const peopleData = await peopleRes.json();
+        for (const person of (peopleData.people || [])) {
+          const player = allPlayers.find(p => p.id === person.id);
+          if (player) {
+            player.pos = person.primaryPosition?.abbreviation || 'OF';
+          }
+        }
+      }
+    }
+
+    // posがまだnullの打者はOFにフォールバック
+    for (const p of allPlayers) {
+      if (!p.pos) p.pos = 'OF';
     }
 
     const scored = allPlayers.map(p => {
