@@ -1,6 +1,4 @@
 // api/players.js
-// MLB Stats API から選手の直近成績を取得してトレンドスコアを計算して返す
-
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
@@ -8,7 +6,6 @@ module.exports = async function handler(req, res) {
   try {
     const season = new Date().getFullYear();
 
-    // MLB + マイナー（sportId: 1=MLB, 11=AAA, 12=AA, 13=A+）
     const sportIds = [
       { id: 1,  level: 'MLB' },
       { id: 11, level: 'AAA' },
@@ -19,9 +16,7 @@ module.exports = async function handler(req, res) {
     const allPlayers = [];
 
     for (const sport of sportIds) {
-      // 打者：打率・OPS・HR上位
       const batUrl = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=battingAverage,onBasePlusSlugging,homeRuns&season=${season}&sportId=${sport.id}&limit=20&statGroup=hitting&statType=season`;
-      // 投手：ERA・奪三振上位
       const pitUrl = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=earnedRunAverage,strikeoutsPer9Inn&season=${season}&sportId=${sport.id}&limit=20&statGroup=pitching&statType=season`;
 
       const [batRes, pitRes] = await Promise.all([
@@ -34,22 +29,22 @@ module.exports = async function handler(req, res) {
         for (const cat of (batData.leagueLeaders || [])) {
           for (const leader of (cat.leaders || [])) {
             const p = leader.person;
-            const s = leader.stat;
+            const s = leader.stat || {};
             if (!p?.id) continue;
             pushOrMerge(allPlayers, {
-              id:       p.id,
-              name:     p.fullName,
-              team:     leader.team?.abbreviation || '?',
-              org:      leader.team?.abbreviation || '?',
-              pos:      leader.position?.abbreviation || 'OF',
-              level:    sport.level,
-              age:      null,
-              isPit:    false,
-              avg:      s.avg       ? parseFloat(s.avg)  : null,
-              ops:      s.ops       ? parseFloat(s.ops)  : null,
-              hr:       s.homeRuns  ?? null,
-              rbi:      s.rbi       ?? null,
-              sb:       s.stolenBases ?? null,
+              id:    p.id,
+              name:  p.fullName,
+              team:  leader.team?.abbreviation || '?',
+              org:   leader.team?.abbreviation || '?',
+              pos:   leader.position?.abbreviation || 'OF',
+              level: sport.level,
+              age:   null,
+              isPit: false,
+              avg:   s.avg        ? parseFloat(s.avg) : null,
+              ops:   s.ops        ? parseFloat(s.ops) : null,
+              hr:    s.homeRuns  != null ? s.homeRuns   : null,
+              rbi:   s.rbi       != null ? s.rbi        : null,
+              sb:    s.stolenBases != null ? s.stolenBases : null,
             });
           }
         }
@@ -60,35 +55,34 @@ module.exports = async function handler(req, res) {
         for (const cat of (pitData.leagueLeaders || [])) {
           for (const leader of (cat.leaders || [])) {
             const p = leader.person;
-            const s = leader.stat;
+            const s = leader.stat || {};
             if (!p?.id) continue;
             pushOrMerge(allPlayers, {
-              id:       p.id,
-              name:     p.fullName,
-              team:     leader.team?.abbreviation || '?',
-              org:      leader.team?.abbreviation || '?',
-              pos:      leader.position?.abbreviation || 'SP',
-              level:    sport.level,
-              age:      null,
-              isPit:    true,
-              era:      s.era  ? parseFloat(s.era)  : null,
-              whip:     s.whip ? parseFloat(s.whip) : null,
-              k9:       s.strikeoutsPer9Inn ? parseFloat(s.strikeoutsPer9Inn) : null,
-              ip:       s.inningsPitched ? parseFloat(s.inningsPitched) : null,
-              wins:     s.wins ?? null,
+              id:    p.id,
+              name:  p.fullName,
+              team:  leader.team?.abbreviation || '?',
+              org:   leader.team?.abbreviation || '?',
+              pos:   leader.position?.abbreviation || 'SP',
+              level: sport.level,
+              age:   null,
+              isPit: true,
+              era:   s.era  ? parseFloat(s.era)  : null,
+              whip:  s.whip ? parseFloat(s.whip) : null,
+              k9:    s.strikeoutsPer9Inn ? parseFloat(s.strikeoutsPer9Inn) : null,
+              ip:    s.inningsPitched   ? parseFloat(s.inningsPitched)    : null,
+              wins:  s.wins != null ? s.wins : null,
             });
           }
         }
       }
     }
 
-    // トレンドスコア計算（簡易版：成績の優秀さをスコア化）
     const scored = allPlayers.map(p => {
       let score = 50;
       if (!p.isPit) {
-        if (p.avg  !== null) score += Math.min(30, Math.round((p.avg  - 0.250) * 300));
-        if (p.ops  !== null) score += Math.min(20, Math.round((p.ops  - 0.700) * 40));
-        if (p.hr   !== null) score += Math.min(10, p.hr);
+        if (p.avg !== null) score += Math.min(30, Math.round((p.avg - 0.250) * 300));
+        if (p.ops !== null) score += Math.min(20, Math.round((p.ops - 0.700) * 40));
+        if (p.hr  !== null) score += Math.min(10, p.hr);
       } else {
         if (p.era  !== null) score += Math.min(30, Math.round((4.50 - p.era)  * 10));
         if (p.whip !== null) score += Math.min(20, Math.round((1.40 - p.whip) * 30));
@@ -106,7 +100,7 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-}
+};
 
 function pushOrMerge(arr, player) {
   const existing = arr.find(p => p.id === player.id);
