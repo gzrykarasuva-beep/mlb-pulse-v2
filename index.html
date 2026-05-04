@@ -525,15 +525,25 @@ function renderTable(){
   const tbl = document.getElementById('trend-table');
   tbl.querySelectorAll('.trend-row:not(.hdr)').forEach(r=>r.remove());
 
-  const list = PLAYERS.filter(p=>{
-    const posOk = filt.pos==='all' || p.pos===filt.pos || (filt.pos==='INF'&&['1B','2B','3B','SS'].includes(p.pos));
+const list = PLAYERS.filter(p=>{
+    let posOk = false;
+    if (filt.pos === 'all') posOk = true;
+    else if (filt.pos === 'SP')  posOk = p.pos === 'SP';
+    else if (filt.pos === 'RP')  posOk = p.pos === 'RP';
+    else if (filt.pos === 'OF')  posOk = p.pos === 'OF' || p.pos === 'LF' || p.pos === 'CF' || p.pos === 'RF';
+    else if (filt.pos === 'INF') posOk = ['1B','2B','3B','SS'].includes(p.pos);
+    else if (filt.pos === 'C')   posOk = p.pos === 'C';
+    else posOk = p.pos === filt.pos;
     const lvOk  = filt.levels.includes(p.level);
     const qOk   = !filt.q || p.name.toLowerCase().includes(filt.q) || (p.org||'').toLowerCase().includes(filt.q) || (p.team||'').toLowerCase().includes(filt.q);
     return posOk && lvOk && qOk;
   }).sort((a,b)=>b.trendScore-a.trendScore);
 
+  tbl.querySelectorAll('.empty-msg').forEach(e=>e.remove());
+
   if(!list.length){
     const empty = document.createElement('div');
+    empty.className = 'empty-msg';
     empty.style.cssText = 'padding:24px;text-align:center;color:var(--text3);font-size:13px;';
     empty.textContent = '条件に一致する選手が見つかりません';
     tbl.appendChild(empty);
