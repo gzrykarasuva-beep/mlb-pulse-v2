@@ -4,7 +4,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   try {
-    const season = new Date().getFullYear();
+   const season = 2025;
 
     const sportIds = [
       { id: 1,  level: 'MLB' },
