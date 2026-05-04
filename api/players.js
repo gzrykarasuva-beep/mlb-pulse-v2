@@ -4,7 +4,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   try {
-   const season = 2025;
+    const season = 2025;
 
     const sportIds = [
       { id: 1,  level: 'MLB' },
@@ -16,62 +16,44 @@ module.exports = async function handler(req, res) {
     const allPlayers = [];
 
     for (const sport of sportIds) {
-      const batUrl = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=battingAverage,onBasePlusSlugging,homeRuns&season=${season}&sportId=${sport.id}&limit=20&statGroup=hitting&statType=season`;
-      const pitUrl = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=earnedRunAverage,strikeoutsPer9Inn&season=${season}&sportId=${sport.id}&limit=20&statGroup=pitching&statType=season`;
+      const categories = [
+        { cat: 'battingAverage',       group: 'hitting'  },
+        { cat: 'onBasePlusSlugging',   group: 'hitting'  },
+        { cat: 'homeRuns',             group: 'hitting'  },
+        { cat: 'earnedRunAverage',     group: 'pitching' },
+        { cat: 'strikeoutsPer9Inn',    group: 'pitching' },
+      ];
 
-      const [batRes, pitRes] = await Promise.all([
-        fetch(batUrl),
-        fetch(pitUrl),
-      ]);
+      for (const { cat, group } of categories) {
+        const url = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=${cat}&season=${season}&sportId=${sport.id}&limit=20&statGroup=${group}&statType=season`;
+        const res2 = await fetch(url);
+        if (!res2.ok) continue;
+        const data = await res2.json();
 
-      if (batRes.ok) {
-        const batData = await batRes.json();
-        for (const cat of (batData.leagueLeaders || [])) {
-          for (const leader of (cat.leaders || [])) {
+        for (const catObj of (data.leagueLeaders || [])) {
+          for (const leader of (catObj.leaders || [])) {
             const p = leader.person;
-            const s = leader.stat || {};
             if (!p?.id) continue;
-            pushOrMerge(allPlayers, {
+            const val = parseFloat(leader.value) || null;
+            const isPit = group === 'pitching';
+
+            const entry = {
               id:    p.id,
               name:  p.fullName,
-              team:  leader.team?.abbreviation || '?',
-              org:   leader.team?.abbreviation || '?',
-              pos:   leader.position?.abbreviation || 'OF',
+              team:  leader.team?.abbreviation || leader.team?.name?.slice(0,3).toUpperCase() || '?',
               level: sport.level,
-              age:   null,
-              isPit: false,
-              avg:   s.avg        ? parseFloat(s.avg) : null,
-              ops:   s.ops        ? parseFloat(s.ops) : null,
-              hr:    s.homeRuns  != null ? s.homeRuns   : null,
-              rbi:   s.rbi       != null ? s.rbi        : null,
-              sb:    s.stolenBases != null ? s.stolenBases : null,
-            });
-          }
-        }
-      }
+              isPit,
+              avg:  null, ops: null, hr: null,
+              era:  null, k9: null,
+            };
 
-      if (pitRes.ok) {
-        const pitData = await pitRes.json();
-        for (const cat of (pitData.leagueLeaders || [])) {
-          for (const leader of (cat.leaders || [])) {
-            const p = leader.person;
-            const s = leader.stat || {};
-            if (!p?.id) continue;
-            pushOrMerge(allPlayers, {
-              id:    p.id,
-              name:  p.fullName,
-              team:  leader.team?.abbreviation || '?',
-              org:   leader.team?.abbreviation || '?',
-              pos:   leader.position?.abbreviation || 'SP',
-              level: sport.level,
-              age:   null,
-              isPit: true,
-              era:   s.era  ? parseFloat(s.era)  : null,
-              whip:  s.whip ? parseFloat(s.whip) : null,
-              k9:    s.strikeoutsPer9Inn ? parseFloat(s.strikeoutsPer9Inn) : null,
-              ip:    s.inningsPitched   ? parseFloat(s.inningsPitched)    : null,
-              wins:  s.wins != null ? s.wins : null,
-            });
+            if (cat === 'battingAverage')     entry.avg = val;
+            if (cat === 'onBasePlusSlugging') entry.ops = val;
+            if (cat === 'homeRuns')           entry.hr  = val;
+            if (cat === 'earnedRunAverage')   entry.era = val;
+            if (cat === 'strikeoutsPer9Inn')  entry.k9  = val;
+
+            pushOrMerge(allPlayers, entry);
           }
         }
       }
@@ -84,9 +66,8 @@ module.exports = async function handler(req, res) {
         if (p.ops !== null) score += Math.min(20, Math.round((p.ops - 0.700) * 40));
         if (p.hr  !== null) score += Math.min(10, p.hr);
       } else {
-        if (p.era  !== null) score += Math.min(30, Math.round((4.50 - p.era)  * 10));
-        if (p.whip !== null) score += Math.min(20, Math.round((1.40 - p.whip) * 30));
-        if (p.k9   !== null) score += Math.min(10, Math.round((p.k9  - 8.0)   * 2));
+        if (p.era !== null) score += Math.min(30, Math.round((4.50 - p.era) * 10));
+        if (p.k9  !== null) score += Math.min(10, Math.round((p.k9  - 8.0)  * 2));
       }
       score = Math.max(0, Math.min(99, score));
       const trendDir = score >= 80 ? 'hot' : score >= 65 ? 'warm' : 'cool';
