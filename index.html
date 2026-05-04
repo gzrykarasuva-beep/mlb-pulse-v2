@@ -533,6 +533,7 @@ const list = PLAYERS.filter(p=>{
     else if (filt.pos === 'OF')  posOk = p.pos === 'OF' || p.pos === 'LF' || p.pos === 'CF' || p.pos === 'RF';
     else if (filt.pos === 'INF') posOk = ['1B','2B','3B','SS'].includes(p.pos);
     else if (filt.pos === 'C')   posOk = p.pos === 'C';
+    else if (filt.pos === 'DH')  posOk = p.pos === 'DH';
     else posOk = p.pos === filt.pos;
     const lvOk  = filt.levels.includes(p.level);
     const qOk   = !filt.q || p.name.toLowerCase().includes(filt.q) || (p.org||'').toLowerCase().includes(filt.q) || (p.team||'').toLowerCase().includes(filt.q);
