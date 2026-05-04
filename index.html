@@ -700,6 +700,21 @@ function selectPlayer(p){
   const nc = p.trendDir==='hot'?'var(--hot)':'var(--warm)';
 
   document.getElementById('d-summary').innerHTML = `
+  // 傾向コメント
+  const commentEl = document.getElementById('d-comment');
+  if (commentEl) {
+    const lbl = getTrendLabel(p);
+    let comment = '';
+    if (!p.isPit) {
+      comment = `${lbl.text.replace(' 上昇中','').replace(' 増加中','')} が ${lbl.from} → ${lbl.to} と推移。`;
+      if (p.ops != null && p.ops >= 0.800) comment += ` OPS ${p.ops.toFixed(3)} で長打も好調。`;
+      if (p.hr  != null && p.hr  >= 5)    comment += ` ${p.hr}本塁打と長打力も発揮中。`;
+    } else {
+      comment = `ERA ${p.era != null ? p.era.toFixed(2) : '—'} で安定した投球が続いています。`;
+      if (p.k9 != null && p.k9 >= 9) comment += ` K/9 ${p.k9.toFixed(1)} と三振奪取率も高水準。`;
+    }
+    commentEl.textContent = comment;
+  }
     <div class="summary-box">
       <div class="s-lbl">急上昇スコア</div>
       <div class="s-val" style="color:${nc}">${p.trendScore}</div>
