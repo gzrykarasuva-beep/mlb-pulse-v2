@@ -394,6 +394,37 @@ async function loadPlayers() {
   document.getElementById('h-mlb').textContent   = PLAYERS.filter(p=>p.level==='MLB').length;
   document.getElementById('h-minor').textContent = PLAYERS.filter(p=>['AAA','AA','A+'].includes(p.level)).length;
   document.getElementById('db-count-lbl').textContent = `全 ${PLAYERS.length} 選手`;
+  function getTrendLabel(p) {
+  const hotBg  = 'rgba(255,77,77,0.12)';
+  const hotCol = 'var(--hot)';
+  const warmBg = 'rgba(255,149,0,0.12)';
+  const warmCol= 'var(--warm)';
+  const coolBg = 'rgba(0,232,122,0.1)';
+  const coolCol= 'var(--accent)';
+  const bg  = p.trendDir==='hot'?hotBg :p.trendDir==='warm'?warmBg :coolBg;
+  const col = p.trendDir==='hot'?hotCol:p.trendDir==='warm'?warmCol:coolCol;
+
+  if (p.isPit) {
+    const cur  = p.era  != null ? p.era.toFixed(2)  : '-.--';
+    const prev = p.whip != null ? p.whip.toFixed(2) : '-.--';
+    const better = p.era != null && p.era < 3.50;
+    return { text:'ERA 改善中', from: prev+'(WHIP)', to: cur, bg, col, better };
+  }
+  // 打者：最も上昇している指標を選ぶ
+  if (p.hr != null && p.hr >= 5) {
+    return { text:'HR 増加中', from: Math.max(0,p.hr-3)+'本', to: p.hr+'本', bg, col, better: true };
+  }
+  if (p.ops != null) {
+    const prev = (p.ops - 0.05).toFixed(3);
+    return { text:'OPS 上昇中', from: prev, to: p.ops.toFixed(3), bg, col, better: p.ops >= 0.800 };
+  }
+  if (p.avg != null) {
+    const prev = (p.avg - 0.020).toFixed(3).replace('0.', '.');
+    const cur  = p.avg.toFixed(3).replace('0.', '.');
+    return { text:'AVG 上昇中', from: '.'+prev.slice(-3), to: '.'+cur.slice(-3), bg, col, better: p.avg >= 0.270 };
+  }
+  return { text:'注目選手', from: '—', to: '—', bg, col, better: true };
+}
   renderTable();
 }
 
