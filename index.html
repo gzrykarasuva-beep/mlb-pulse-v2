@@ -1,565 +1,761 @@
-// ═══════════════════════════════════════════════════
-// UI STATE & FILTERS
-// ═══════════════════════════════════════════════════
-let PLAYERS = []; 
-let GAMES = [];   
-let selectedId = null;
-let gameFilter = 'live';
-let filt = { pos: 'all', levels: ['MLB'], q: '' };
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLB Pulse</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0c0f; --bg2:#111318; --bg3:#1a1d24;
+    --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+    --text:#f0f2f5; --text2:#8a8f9a; --text3:#555a66;
+    --accent:#00e87a; --accent2:#0095ff;
+    --hot:#ff4d4d; --warm:#ff9500; --purple:#b060ff;
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
 
-// ═══════════════════════════════════════════════════
-// CORE FUNCTIONS
-// ═══════════════════════════════════════════════════
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100;gap:12px;}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.5px;white-space:nowrap;}
+  .logo span{color:var(--accent);}
+  .nav{display:flex;gap:6px;}
+  .nav-btn{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:'Inter',sans-serif;font-size:13px;padding:6px 14px;border-radius:20px;cursor:pointer;transition:all 0.15s;}
+  .nav-btn:hover,.nav-btn.active{background:var(--accent);border-color:var(--accent);color:#000;font-weight:500;}
+  .live-badge{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;color:var(--hot);background:rgba(255,77,77,0.1);border:1px solid rgba(255,77,77,0.2);padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--hot);animation:blink 1.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
 
-function showSection(id, btn) {
-    // セクションの切り替え
-    ['section-trends', 'section-scores', 'section-search'].forEach(s => {
-        document.getElementById(s).style.display = 'none';
-    });
-    document.getElementById('section-' + id).style.display = 'block';
-    
-    // ボタンのアクティブ状態
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+  .container{max-width:1300px;margin:0 auto;padding:0 28px 60px;}
 
-    if (id === 'scores') renderAllGames();
-    if (id === 'search') dbSearch('');
-}
+  .hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0;}
+  .stat-tile{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;}
+  .stat-tile .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px;}
+  .stat-tile .val{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;line-height:1;}
+  .stat-tile .sub{font-size:11px;color:var(--text3);margin-top:4px;}
+  .green .val{color:var(--accent);} .red .val{color:var(--hot);} .blue .val{color:var(--accent2);}
 
-function setPos(pos, btn) {
-    filt.pos = pos;
-    updateFilterButtons(btn, '.filter-row:first-of-type .filter-btn');
-    renderTable();
-}
+  .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg2) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .loading-row{height:52px;margin:4px 16px;}
 
-function toggleLevel(lvl, btn) {
-    if (filt.levels.includes(lvl)) {
-        filt.levels = filt.levels.filter(l => l !== lvl);
-        btn.classList.remove('on');
-    } else {
-        filt.levels.push(lvl);
-        btn.classList.add('on');
-    }
-    renderTable();
-}
+  .status-banner{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:12px;font-family:'DM Mono',monospace;}
+  .status-banner.ok{background:rgba(0,232,122,0.06);border:1px solid rgba(0,232,122,0.15);color:var(--accent);}
+  .status-banner.err{background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.2);color:var(--hot);}
 
-function setSearch(val) {
-    filt.q = val.toLowerCase();
-    renderTable();
-}
+  .two-col{display:grid;grid-template-columns:1fr 360px;gap:20px;}
+  .section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+  .section-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;}
+  .section-title span{font-size:11px;font-weight:400;font-family:'DM Mono',monospace;color:var(--text3);margin-left:8px;}
 
-function updateFilterButtons(activeBtn, selector) {
-    document.querySelectorAll(selector).forEach(b => b.classList.remove('on'));
-    activeBtn.classList.add('on');
-}
+  .filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .filter-btn{background:transparent;border:1px solid var(--border);color:var(--text2);font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:20px;cursor:pointer;transition:all 0.15s;}
+  .filter-btn:hover{border-color:var(--border2);color:var(--text);}
+  .filter-btn.on{background:rgba(0,232,122,0.12);border-color:var(--accent);color:var(--accent);}
 
-// ═══════════════════════════════════════════════════
-// RENDERING - TREND TABLE
-// ═══════════════════════════════════════════════════
+  .search-wrap{position:relative;margin-bottom:14px;}
+  .search-wrap input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:10px 16px 10px 38px;outline:none;transition:border-color 0.15s;}
+  .search-wrap input::placeholder{color:var(--text3);}
+  .search-wrap input:focus{border-color:var(--border2);}
+  .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px;pointer-events:none;}
 
-function renderTable() {
-    const container = document.getElementById('trend-table');
-    const header = container.querySelector('.hdr');
-    container.innerHTML = '';
-    container.appendChild(header);
+  .trend-table{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .trend-row{display:grid;grid-template-columns:28px 28px 1fr 110px 100px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);gap:8px;cursor:pointer;transition:background 0.12s;}
+  .trend-row:last-child{border-bottom:none;}
+  .trend-row:hover{background:var(--bg3);}
+  .trend-row.selected{background:rgba(0,232,122,0.05);border-left:2px solid var(--accent);padding-left:12px;}
+  .trend-row.hdr{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;cursor:default;padding:8px 14px;background:var(--bg2);}
+  .trend-row.hdr:hover{background:var(--bg2);}
 
-    const filtered = PLAYERS.filter(p => {
-        const matchPos = filt.pos === 'all' || p.pos === filt.pos || (filt.pos === 'INF' && ['1B','2B','3B','SS'].includes(p.pos));
-        const matchLvl = filt.levels.includes(p.level);
-        const matchSearch = p.name.toLowerCase().includes(filt.q) || p.team.toLowerCase().includes(filt.q);
-        return matchPos && matchLvl && matchSearch;
-    }).sort((a, b) => b.trendScore - a.trendScore);
+  .rank{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-align:center;}
+  .rank.top{color:var(--accent);font-weight:500;}
+  .fire-col{font-size:15px;text-align:center;}
+  .p-name{font-weight:500;font-size:13px;color:var(--text);}
+  .p-meta{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;}
+  .p-reason{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.4;}
 
-    filtered.forEach((p, idx) => {
-        const info = getTrendLabel(p);
-        const row = document.createElement('div');
-        row.className = `trend-row ${selectedId === p.id ? 'selected' : ''}`;
-        row.onclick = () => showDetail(p);
-        
-        row.innerHTML = `
-            <div class="rank ${idx < 3 ? 'top' : ''}">${idx + 1}</div>
-            <div>
-                <div class="p-name">${p.name} <span class="badge-level badge-${p.level.toLowerCase().replace('+', '')}">${p.level}</span></div>
-                <div class="p-meta">${p.team} • ${p.pos} • Age ${p.age}</div>
+  .badge-level{display:inline-block;font-size:9px;font-family:'DM Mono',monospace;padding:1px 5px;border-radius:4px;font-weight:500;margin-left:4px;}
+  .badge-mlb{background:rgba(0,149,255,0.15);color:var(--accent2);}
+  .badge-aaa{background:rgba(255,149,0,0.12);color:var(--warm);}
+  .badge-aa{background:rgba(176,96,255,0.15);color:var(--purple);}
+  .badge-a{background:rgba(0,232,122,0.1);color:var(--accent);}
+
+  .change-block{display:flex;align-items:center;gap:5px;}
+  .change-arrow{font-size:14px;font-weight:700;}
+  .change-arrow.up{color:var(--accent);}
+  .change-arrow.dn{color:var(--hot);}
+  .change-vals{display:flex;flex-direction:column;align-items:flex-end;}
+  .change-delta{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;}
+  .change-delta.up{color:var(--accent);}
+  .change-delta.dn{color:var(--hot);}
+  .change-from{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);}
+
+  .trend-cell{display:flex;align-items:center;justify-content:flex-end;gap:6px;}
+  .trend-bar{height:4px;border-radius:2px;background:var(--border);width:44px;overflow:hidden;}
+  .trend-fill{height:100%;border-radius:2px;}
+  .t-hot{background:var(--hot);} .t-warm{background:var(--warm);} .t-cool{background:var(--accent);}
+  .trend-num{font-family:'DM Mono',monospace;font-size:11px;min-width:24px;text-align:right;}
+
+  .detail-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:16px;}
+  .detail-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+  .d-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;line-height:1.1;}
+  .d-sub{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;}
+
+  .highlight-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .hl-box{border-radius:var(--radius-sm);padding:12px 14px;text-align:center;}
+  .hl-box.up{background:rgba(0,232,122,0.08);border:1px solid rgba(0,232,122,0.2);}
+  .hl-box.dn{background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.2);}
+  .hl-box.neu{background:var(--bg3);border:1px solid var(--border);}
+  .hl-lbl{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;}
+  .hl-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;margin-top:4px;line-height:1;}
+  .hl-box.up .hl-val{color:var(--accent);}
+  .hl-box.dn .hl-val{color:var(--hot);}
+  .hl-sub{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+  .stat-box{background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;text-align:center;}
+  .s-lbl{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;}
+  .s-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-top:3px;}
+  .s-delta{font-size:11px;font-family:'DM Mono',monospace;margin-top:2px;}
+  .s-delta.up{color:var(--accent);} .s-delta.dn{color:var(--hot);} .s-delta.neu{color:var(--text3);}
+
+  .spark-section{margin-top:4px;}
+  .spark-label-row{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;display:flex;justify-content:space-between;}
+  .spark-row{display:flex;gap:3px;align-items:flex-end;height:64px;}
+  .spark-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .spark-bar{width:100%;border-radius:2px 2px 0 0;min-height:3px;}
+  .spark-val{font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);text-align:center;}
+  .spark-val.hl{color:var(--accent);}
+  .spark-game-row{display:flex;gap:3px;margin-top:3px;}
+  .spark-game-lbl{flex:1;font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);text-align:center;}
+
+  .trend-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .summary-box{text-align:center;}
+  .summary-box .s-lbl{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;}
+  .summary-box .s-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-top:3px;}
+  .summary-box .s-sub{font-size:10px;color:var(--text3);margin-top:2px;}
+
+  .close-btn{background:var(--bg3);border:none;color:var(--text3);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;}
+  .close-btn:hover{color:var(--text);background:var(--border2);}
+
+  .sidebar{display:flex;flex-direction:column;gap:12px;}
+  .games-scroll{max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+  .games-scroll::-webkit-scrollbar{width:3px;}
+  .games-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+  .game-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;transition:border-color 0.15s;}
+  .game-card.hot{border-color:rgba(255,77,77,0.3);}
+  .game-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .g-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--hot);}
+  .g-status.final{color:var(--text3);}
+  .g-inning{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);background:var(--bg3);padding:2px 7px;border-radius:4px;}
+  .matchup{display:flex;align-items:center;justify-content:space-between;}
+  .team{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;}
+  .t-abbr{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;}
+  .t-abbr.win{color:var(--accent);}
+  .t-lbl{font-size:10px;color:var(--text3);}
+  .t-rec{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;}
+  .scores{display:flex;align-items:center;gap:8px;}
+  .score{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;min-width:26px;text-align:center;}
+  .score.win{color:var(--accent);}
+  .score-sep{color:var(--text3);font-size:16px;}
+
+  .all-games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+  .db-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:border-color 0.15s;}
+  .db-card:hover{border-color:var(--border2);}
+
+  .refresh-btn{background:transparent;border:1px solid var(--border2);color:var(--text2);font-size:11px;font-family:'DM Mono',monospace;padding:4px 12px;border-radius:20px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:5px;}
+  .refresh-btn:hover{color:var(--accent);border-color:var(--accent);}
+  .spin{display:inline-block;animation:rotate 0.8s linear infinite;}
+  @keyframes rotate{to{transform:rotate(360deg)}}
+
+  #section-scores,#section-search{display:none;}
+
+  @media(max-width:900px){
+    .two-col{grid-template-columns:1fr;}
+    .hero-stats{grid-template-columns:repeat(2,1fr);}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .highlight-boxes{grid-template-columns:repeat(2,1fr);}
+    header{padding:12px 16px;flex-wrap:wrap;}
+    .container{padding:0 16px 40px;}
+    .trend-row{grid-template-columns:24px 24px 1fr 90px;}
+    .trend-row .hide-sm{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MLB <span>Pulse</span></div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="showSection('trends',this)">トレンド</button>
+    <button class="nav-btn" onclick="showSection('scores',this)">スコア</button>
+    <button class="nav-btn" onclick="showSection('search',this)">選手検索</button>
+  </div>
+  <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+</header>
+
+<div class="container">
+  <div class="hero-stats">
+    <div class="stat-tile green"><div class="lbl">MLB トレンド選手</div><div class="val" id="h-mlb">—</div><div class="sub">急上昇スコア上位</div></div>
+    <div class="stat-tile red"><div class="lbl">マイナー注目</div><div class="val" id="h-minor">—</div><div class="sub">AAA / AA / A+</div></div>
+    <div class="stat-tile blue"><div class="lbl">本日の試合</div><div class="val" id="h-games">—</div><div class="sub">ライブ / 終了 / 予定</div></div>
+    <div class="stat-tile"><div class="lbl">最終取得</div><div class="val" id="hero-time" style="font-size:18px">—</div><div class="sub">JST 自動更新</div></div>
+  </div>
+
+  <div id="section-trends">
+    <div class="two-col">
+      <div>
+        <div class="section-hd">
+          <div class="section-title">トレンド選手 <span id="data-source-lbl">読み込み中...</span></div>
+          <button class="refresh-btn" onclick="loadAll()"><span id="refresh-icon">↻</span> 更新</button>
+        </div>
+        <div id="api-status"></div>
+        <div class="filter-row" id="pos-filters">
+          <button class="filter-btn on" onclick="setPos('all',this)">すべて</button>
+          <button class="filter-btn" onclick="setPos('SP',this)">先発</button>
+          <button class="filter-btn" onclick="setPos('RP',this)">リリーフ</button>
+          <button class="filter-btn" onclick="setPos('OF',this)">外野</button>
+          <button class="filter-btn" onclick="setPos('INF',this)">内野</button>
+          <button class="filter-btn" onclick="setPos('C',this)">捕手</button>
+        </div>
+        <div class="filter-row" id="lv-filters">
+          <button class="filter-btn on" onclick="toggleLevel('MLB',this)">MLB</button>
+          <button class="filter-btn" onclick="toggleLevel('AAA',this)">AAA</button>
+          <button class="filter-btn" onclick="toggleLevel('AA',this)">AA</button>
+          <button class="filter-btn" onclick="toggleLevel('A+',this)">A+</button>
+        </div>
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input type="text" placeholder="選手名・チームで検索..." oninput="setSearch(this.value)">
+        </div>
+        <div class="trend-table" id="trend-table">
+          <div class="trend-row hdr">
+            <div>#</div><div></div><div>選手 / 変化の理由</div>
+            <div style="text-align:right">変化幅</div>
+            <div style="text-align:right">急上昇度</div>
+          </div>
+          <div id="table-loading">
+            <div class="skeleton loading-row"></div>
+            <div class="skeleton loading-row"></div>
+            <div class="skeleton loading-row"></div>
+            <div class="skeleton loading-row"></div>
+            <div class="skeleton loading-row"></div>
+          </div>
+        </div>
+        <div class="detail-panel" id="detail-panel" style="display:none">
+          <div class="detail-hd">
+            <div><div class="d-name" id="d-name"></div><div class="d-sub" id="d-sub"></div></div>
+            <button class="close-btn" onclick="closeDetail()">×</button>
+          </div>
+          <div class="highlight-boxes" id="d-highlights"></div>
+          <div class="stat-grid" id="d-stats"></div>
+          <div class="spark-section">
+            <div class="spark-label-row">
+              <span>直近10試合の推移（左が古い → 右が最新）</span>
+              <span id="spark-range"></span>
             </div>
-            <div class="stat-cell" style="color:${info.col}">${info.text}</div>
-            <div class="stat-cell">${info.to}</div>
-            <div class="trend-cell">
-                <div class="trend-bar"><div class="trend-fill t-${p.trendDir}" style="width:${p.trendScore}%"></div></div>
-                <div class="trend-num">${p.trendScore}</div>
-            </div>
-        `;
-        container.appendChild(row);
-    });
-}
+            <div class="spark-row" id="d-spark"></div>
+            <div class="spark-game-row" id="d-spark-lbl"></div>
+          </div>
+          <div class="trend-summary" id="d-summary"></div>
+        </div>
+      </div>
+      <div class="sidebar">
+        <div class="section-hd">
+          <div class="section-title">スコア</div>
+          <div style="display:flex;gap:6px;">
+            <button class="filter-btn on" onclick="setGameFilter('live',this)">LIVE</button>
+            <button class="filter-btn" onclick="setGameFilter('final',this)">終了</button>
+            <button class="filter-btn" onclick="setGameFilter('all',this)">全試合</button>
+          </div>
+        </div>
+        <div class="games-scroll" id="live-games">
+          <div class="skeleton" style="height:90px;border-radius:12px;"></div>
+          <div class="skeleton" style="height:90px;border-radius:12px;"></div>
+          <div class="skeleton" style="height:90px;border-radius:12px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-// ═══════════════════════════════════════════════════
-// RENDERING - DETAIL PANEL
-// ═══════════════════════════════════════════════════
+  <div id="section-scores">
+    <div class="section-hd">
+      <div class="section-title">全試合スコア</div>
+      <button class="refresh-btn" onclick="loadScores()">↻ 更新</button>
+    </div>
+    <div class="all-games-grid" id="all-games"></div>
+  </div>
 
-function showDetail(p) {
-    selectedId = p.id;
-    renderTable(); // Update selection styling
-    
-    const panel = document.getElementById('detail-panel');
-    panel.style.display = 'block';
-    
-    document.getElementById('d-name').textContent = p.name;
-    document.getElementById('d-sub').textContent = `${p.level} | ${p.org} | #${p.id}`;
-    
-    const statsGrid = document.getElementById('d-stats');
-    statsGrid.innerHTML = '';
-    
-    const metrics = p.isPit 
-        ? [{l:'ERA', v:p.era, d:p.weekEra, rev:true}, {l:'WHIP', v:p.whip, d:p.weekWhip, rev:true}, {l:'K/9', v:p.k9}, {l:'IP', v:p.ip}]
-        : [{l:'AVG', v:p.avg, d:p.weekAvg}, {l:'OPS', v:p.ops, d:p.weekOps}, {l:'HR', v:p.hr}, {l:'RBI', v:p.rbi}];
+  <div id="section-search">
+    <div class="section-hd"><div class="section-title">選手データベース <span id="db-count-lbl"></span></div></div>
+    <div class="search-wrap" style="max-width:480px">
+      <span class="search-icon">⌕</span>
+      <input type="text" placeholder="名前・チーム・ポジションで検索..." oninput="dbSearch(this.value)">
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:16px" id="db-results">
+      <div style="color:var(--text3);font-size:13px;padding:16px 0">名前・チーム・ポジションを入力してください</div>
+    </div>
+  </div>
+</div>
 
-    metrics.forEach(m => {
-        const delta = m.d ? (m.v - m.d).toFixed(3) : null;
-        let deltaClass = 'neu';
-        if (delta > 0) deltaClass = m.rev ? 'dn' : 'up';
-        if (delta < 0) deltaClass = m.rev ? 'up' : 'dn';
-
-        statsGrid.innerHTML += `
-            <div class="stat-box">
-                <div class="s-lbl">${m.l}</div>
-                <div class="s-val">${typeof m.v === 'number' && m.v < 1 && m.l.includes('A') ? fmtAvg(m.v) : m.v}</div>
-                <div class="s-delta ${deltaClass}">${delta > 0 ? '+'+delta : delta || ''}</div>
-            </div>
-        `;
-    });
-
-    renderSpark(p);
-}
-
-function renderSpark(p) {
-    const container = document.getElementById('d-spark');
-    const labelRow = document.getElementById('d-spark-lbl');
-    container.innerHTML = '';
-    labelRow.innerHTML = '';
-    
-    const max = Math.max(...p.spark);
-    const min = Math.min(...p.spark);
-    
-    p.spark.forEach((val, i) => {
-        const height = ((val - min) / (max - min || 1) * 80) + 20;
-        const barWrap = document.createElement('div');
-        barWrap.className = 'spark-bar-wrap';
-        barWrap.innerHTML = `
-            <div class="spark-val ${i === 9 ? 'hl' : ''}">${p.isPit ? val : fmtAvg(val)}</div>
-            <div class="spark-bar" style="height:${height}%; background:${i === 9 ? 'var(--accent)' : 'var(--bg3)'}; border:1px solid var(--border2)"></div>
-        `;
-        container.appendChild(barWrap);
-        
-        const lbl = document.createElement('div');
-        lbl.className = 'spark-game-lbl';
-        lbl.textContent = `G${i+1}`;
-        labelRow.appendChild(lbl);
-    });
-}
-
-function closeDetail() {
-    document.getElementById('detail-panel').style.display = 'none';
-    selectedId = null;
-    renderTable();
-}
-
-// ═══════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════
-
-function fmtAvg(v) {
-    if (v == null) return '.---';
-    return '.' + Math.round(v * 1000).toString().padStart(3, '0');
-}
-
-function setRefreshSpin(active) {
-    const icon = document.getElementById('refresh-icon');
-    if (active) icon.classList.add('spin');
-    else icon.classList.remove('spin');
-}
-
-function updateTime() {
-    const now = new Date();
-    document.getElementById('hero-time').textContent = now.toLocaleTimeString('ja-JP', { hour12: false, hour: '2-digit', minute: '2-digit' });
-}
-
-function setStatus(type, msg) {
-    const container = document.getElementById('api-status');
-    container.innerHTML = `<div class="status-banner ${type}">${msg}</div>`;
-}
-
-// ═══════════════════════════════════════════════════
-// BOOTSTRAP
-// ═══════════════════════════════════════════════════
-window.onload = loadAll;
-</script>
-// ═══════════════════════════════════════════════════
-// UI STATE & FILTERS
-// ═══════════════════════════════════════════════════
-let PLAYERS = []; 
-let GAMES = [];   
-let selectedId = null;
-let gameFilter = 'live';
-let filt = { pos: 'all', levels: ['MLB'], q: '' };
-
-// ═══════════════════════════════════════════════════
-// CORE FUNCTIONS
-// ═══════════════════════════════════════════════════
-
-function showSection(id, btn) {
-    // セクションの切り替え
-    ['section-trends', 'section-scores', 'section-search'].forEach(s => {
-        document.getElementById(s).style.display = 'none';
-    });
-    document.getElementById('section-' + id).style.display = 'block';
-    
-    // ボタンのアクティブ状態
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    if (id === 'scores') renderAllGames();
-    if (id === 'search') dbSearch('');
-}
-
-function setPos(pos, btn) {
-    filt.pos = pos;
-    updateFilterButtons(btn, '.filter-row:first-of-type .filter-btn');
-    renderTable();
-}
-
-function toggleLevel(lvl, btn) {
-    if (filt.levels.includes(lvl)) {
-        filt.levels = filt.levels.filter(l => l !== lvl);
-        btn.classList.remove('on');
-    } else {
-        filt.levels.push(lvl);
-        btn.classList.add('on');
-    }
-    renderTable();
-}
-
-function setSearch(val) {
-    filt.q = val.toLowerCase();
-    renderTable();
-}
-
-function updateFilterButtons(activeBtn, selector) {
-    document.querySelectorAll(selector).forEach(b => b.classList.remove('on'));
-    activeBtn.classList.add('on');
-}
-
-// ═══════════════════════════════════════════════════
-// RENDERING - TREND TABLE
-// ═══════════════════════════════════════════════════
-
-function renderTable() {
-    const container = document.getElementById('trend-table');
-    const header = container.querySelector('.hdr');
-    container.innerHTML = '';
-    container.appendChild(header);
-
-    const filtered = PLAYERS.filter(p => {
-        const matchPos = filt.pos === 'all' || p.pos === filt.pos || (filt.pos === 'INF' && ['1B','2B','3B','SS'].includes(p.pos));
-        const matchLvl = filt.levels.includes(p.level);
-        const matchSearch = p.name.toLowerCase().includes(filt.q) || p.team.toLowerCase().includes(filt.q);
-        return matchPos && matchLvl && matchSearch;
-    }).sort((a, b) => b.trendScore - a.trendScore);
-
-    filtered.forEach((p, idx) => {
-        const info = getTrendLabel(p);
-        const row = document.createElement('div');
-        row.className = `trend-row ${selectedId === p.id ? 'selected' : ''}`;
-        row.onclick = () => showDetail(p);
-        
-        row.innerHTML = `
-            <div class="rank ${idx < 3 ? 'top' : ''}">${idx + 1}</div>
-            <div>
-                <div class="p-name">${p.name} <span class="badge-level badge-${p.level.toLowerCase().replace('+', '')}">${p.level}</span></div>
-                <div class="p-meta">${p.team} • ${p.pos} • Age ${p.age}</div>
-            </div>
-            <div class="stat-cell" style="color:${info.col}">${info.text}</div>
-            <div class="stat-cell">${info.to}</div>
-            <div class="trend-cell">
-                <div class="trend-bar"><div class="trend-fill t-${p.trendDir}" style="width:${p.trendScore}%"></div></div>
-                <div class="trend-num">${p.trendScore}</div>
-            </div>
-        `;
-        container.appendChild(row);
-    });
-}
-
-// ═══════════════════════════════════════════════════
-// RENDERING - DETAIL PANEL
-// ═══════════════════════════════════════════════════
-
-function showDetail(p) {
-    selectedId = p.id;
-    renderTable(); // Update selection styling
-    
-    const panel = document.getElementById('detail-panel');
-    panel.style.display = 'block';
-    
-    document.getElementById('d-name').textContent = p.name;
-    document.getElementById('d-sub').textContent = `${p.level} | ${p.org} | #${p.id}`;
-    
-    const statsGrid = document.getElementById('d-stats');
-    statsGrid.innerHTML = '';
-    
-    const metrics = p.isPit 
-        ? [{l:'ERA', v:p.era, d:p.weekEra, rev:true}, {l:'WHIP', v:p.whip, d:p.weekWhip, rev:true}, {l:'K/9', v:p.k9}, {l:'IP', v:p.ip}]
-        : [{l:'AVG', v:p.avg, d:p.weekAvg}, {l:'OPS', v:p.ops, d:p.weekOps}, {l:'HR', v:p.hr}, {l:'RBI', v:p.rbi}];
-
-    metrics.forEach(m => {
-        const delta = m.d ? (m.v - m.d).toFixed(3) : null;
-        let deltaClass = 'neu';
-        if (delta > 0) deltaClass = m.rev ? 'dn' : 'up';
-        if (delta < 0) deltaClass = m.rev ? 'up' : 'dn';
-
-        statsGrid.innerHTML += `
-            <div class="stat-box">
-                <div class="s-lbl">${m.l}</div>
-                <div class="s-val">${typeof m.v === 'number' && m.v < 1 && m.l.includes('A') ? fmtAvg(m.v) : m.v}</div>
-                <div class="s-delta ${deltaClass}">${delta > 0 ? '+'+delta : delta || ''}</div>
-            </div>
-        `;
-    });
-
-    renderSpark(p);
-}
-
-function renderSpark(p) {
-    const container = document.getElementById('d-spark');
-    const labelRow = document.getElementById('d-spark-lbl');
-    container.innerHTML = '';
-    labelRow.innerHTML = '';
-    
-    const max = Math.max(...p.spark);
-    const min = Math.min(...p.spark);
-    
-    p.spark.forEach((val, i) => {
-        const height = ((val - min) / (max - min || 1) * 80) + 20;
-        const barWrap = document.createElement('div');
-        barWrap.className = 'spark-bar-wrap';
-        barWrap.innerHTML = `
-            <div class="spark-val ${i === 9 ? 'hl' : ''}">${p.isPit ? val : fmtAvg(val)}</div>
-            <div class="spark-bar" style="height:${height}%; background:${i === 9 ? 'var(--accent)' : 'var(--bg3)'}; border:1px solid var(--border2)"></div>
-        `;
-        container.appendChild(barWrap);
-        
-        const lbl = document.createElement('div');
-        lbl.className = 'spark-game-lbl';
-        lbl.textContent = `G${i+1}`;
-        labelRow.appendChild(lbl);
-    });
-}
-
-function closeDetail() {
-    document.getElementById('detail-panel').style.display = 'none';
-    selectedId = null;
-    renderTable();
-}
-
-// ═══════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════
-
-function fmtAvg(v) {
-    if (v == null) return '.---';
-    return '.' + Math.round(v * 1000).toString().padStart(3, '0');
-}
-
-function setRefreshSpin(active) {
-    const icon = document.getElementById('refresh-icon');
-    if (active) icon.classList.add('spin');
-    else icon.classList.remove('spin');
-}
-
-function updateTime() {
-    const now = new Date();
-    document.getElementById('hero-time').textContent = now.toLocaleTimeString('ja-JP', { hour12: false, hour: '2-digit', minute: '2-digit' });
-}
-
-function setStatus(type, msg) {
-    const container = document.getElementById('api-status');
-    container.innerHTML = `<div class="status-banner ${type}">${msg}</div>`;
-}
-
-// ═══════════════════════════════════════════════════
-// BOOTSTRAP
-// ═══════════════════════════════════════════════════
-window.onload = loadAll;
 <script>
-// ═══════════════════════════════════════════════════
-// 1. 設定とデータ（APIが動かない時のための予備データ含む）
-// ═══════════════════════════════════════════════════
-let PLAYERS = []; 
-let GAMES = [];   
+let PLAYERS    = [];
+let GAMES      = [];
 let selectedId = null;
-let filt = { pos: 'all', levels: ['MLB'], q: '' };
+let gameFilter = 'live';
+let filt = { pos:'all', levels:['MLB'], q:'' };
 
 const FALLBACK_PLAYERS = [
-    { id:1, name:"Paul Skenes", team:"PIT", org:"PIT", pos:"SP", level:"MLB", age:23, isPit:true, era:1.84, whip:0.89, k9:13.2, ip:44, weekEra:0.64, weekWhip:0.72, trendScore:96, trendDir:"hot", spark:[2.1,1.8,1.5,0.9,2.4,1.2,0.8,1.1,0.6,0.64] },
-    { id:2, name:"Jackson Chourio", team:"MIL", org:"MIL", pos:"OF", level:"MLB", age:21, isPit:false, avg:.341, ops:.962, hr:9, rbi:28, weekAvg:.378, weekOps:1.041, trendScore:95, trendDir:"hot", spark:[.285,.291,.310,.322,.315,.340,.358,.362,.375,.378] },
-    { id:3, name:"Bobby Witt Jr.", team:"KC", org:"KC", pos:"SS", level:"MLB", age:24, isPit:false, avg:.318, ops:.928, hr:11, rbi:34, weekAvg:.348, weekOps:1.005, trendScore:89, trendDir:"hot", spark:[.285,.295,.302,.310,.315,.320,.328,.335,.342,.348] }
+  { id:1,  name:"Paul Skenes",         team:"PIT", org:"PIT", pos:"SP", level:"MLB", age:23, isPit:true,  era:1.84, whip:0.89, k9:13.2, ip:44,  weekEra:0.64, weekWhip:0.72, weekK:18,  trendScore:96, trendDir:"hot",  reason:"ERA 1.84 → 直近 0.64 に急降下 ▼1.20改善", spark:[2.1,1.8,1.5,0.9,2.4,1.2,0.8,1.1,0.6,0.64] },
+  { id:2,  name:"Jackson Chourio",     team:"MIL", org:"MIL", pos:"OF", level:"MLB", age:21, isPit:false, avg:.341, ops:.962,  hr:9,  rbi:28, weekAvg:.378, weekOps:1.041, weekHr:4, trendScore:95, trendDir:"hot",  reason:"打率 .341 → 直近 .378 に急上昇 ▲.037", spark:[.285,.291,.310,.322,.315,.340,.358,.362,.375,.378] },
+  { id:3,  name:"Bobby Witt Jr.",      team:"KC",  org:"KC",  pos:"SS", level:"MLB", age:24, isPit:false, avg:.318, ops:.928,  hr:11, rbi:34, weekAvg:.348, weekOps:1.005, weekHr:3, trendScore:89, trendDir:"hot",  reason:"OPS .928 → 直近 1.005 に突入 ▲.077", spark:[.285,.295,.302,.310,.315,.320,.328,.335,.342,.348] },
+  { id:4,  name:"Emmanuel Clase",      team:"CLE", org:"CLE", pos:"RP", level:"MLB", age:27, isPit:true,  era:0.71, whip:0.62, k9:11.4, ip:25, weekEra:0.00, weekWhip:0.40, weekK:8,  trendScore:91, trendDir:"hot",  reason:"直近7試合 完全無失点 ERA 0.71 → 0.00", spark:[0.9,0.5,1.0,0.0,0.0,0.5,0.0,1.0,0.0,0.00] },
+  { id:5,  name:"Wyatt Langford",      team:"TEX", org:"TEX", pos:"OF", level:"MLB", age:23, isPit:false, avg:.318, ops:.901,  hr:7,  rbi:22, weekAvg:.356, weekOps:.978,  weekHr:3, trendScore:88, trendDir:"hot",  reason:"7日連続安打中 打率 .318 → .356 ▲.038", spark:[.265,.280,.295,.302,.318,.325,.340,.348,.352,.356] },
+  { id:6,  name:"Ryan Helsley",        team:"STL", org:"STL", pos:"RP", level:"MLB", age:29, isPit:true,  era:1.05, whip:0.70, k9:14.2, ip:17, weekEra:0.00, weekWhip:0.43, weekK:7,  trendScore:83, trendDir:"hot",  reason:"直近5試合無失点 ERA 1.05 → 0.00 K/9=14.2", spark:[1.5,0.0,0.9,0.0,1.8,0.0,0.0,0.0,1.0,0.00] },
+  { id:7,  name:"Junior Caminero",     team:"TB",  org:"TB",  pos:"3B", level:"MLB", age:21, isPit:false, avg:.302, ops:.889,  hr:10, rbi:31, weekAvg:.333, weekOps:.955,  weekHr:3, trendScore:86, trendDir:"hot",  reason:"21歳が覚醒 打率 .302 → .333 ▲.031", spark:[.245,.265,.278,.289,.295,.305,.312,.322,.330,.333] },
+  { id:8,  name:"CJ Abrams",           team:"WSH", org:"WSH", pos:"SS", level:"MLB", age:24, isPit:false, avg:.295, ops:.821,  hr:5,  rbi:19, weekAvg:.340, weekOps:.935,  weekHr:2, trendScore:80, trendDir:"hot",  reason:"打率 .295 → .340 に急上昇 ▲.045", spark:[.255,.265,.272,.280,.288,.295,.310,.320,.332,.340] },
+  { id:9,  name:"Tarik Skubal",        team:"DET", org:"DET", pos:"SP", level:"MLB", age:28, isPit:true,  era:2.05, whip:0.98, k9:11.4, ip:52, weekEra:1.12, weekWhip:0.81, weekK:16, trendScore:88, trendDir:"hot",  reason:"ERA 2.05 → 直近 1.12 に改善 ▼0.93", spark:[2.8,2.4,2.1,1.9,2.3,1.8,1.4,1.2,1.1,1.12] },
+  { id:10, name:"Adley Rutschman",     team:"BAL", org:"BAL", pos:"C",  level:"MLB", age:27, isPit:false, avg:.276, ops:.862,  hr:7,  rbi:25, weekAvg:.318, weekOps:.952,  weekHr:3, trendScore:77, trendDir:"warm", reason:"打率 .276 → .318 に上昇 ▲.042", spark:[.240,.252,.260,.268,.272,.278,.285,.298,.308,.318] },
+  { id:20, name:"James Wood",          team:"ROC", org:"WSH", pos:"OF", level:"AAA", age:22, isPit:false, avg:.321, ops:.942,  hr:8,  rbi:26, weekAvg:.355, weekOps:1.018, weekHr:3, trendScore:91, trendDir:"hot",  reason:"OPS .942 → 1.018 突破 MLB昇格候補筆頭", spark:[.278,.285,.295,.305,.312,.318,.325,.335,.345,.355] },
+  { id:21, name:"Jacob Misiorowski",   team:"NAS", org:"MIL", pos:"SP", level:"AAA", age:23, isPit:true,  era:1.62, whip:0.78, k9:14.1, ip:28, weekEra:0.90, weekWhip:0.60, weekK:21, trendScore:93, trendDir:"hot",  reason:"K/9=14.1 リーグ首位 ERA 1.62 → 0.90", spark:[2.5,2.0,1.8,1.4,1.2,1.0,0.8,1.1,0.9,0.90] },
+  { id:22, name:"Max Clark",           team:"TOL", org:"DET", pos:"OF", level:"AAA", age:20, isPit:false, avg:.305, ops:.878,  hr:5,  rbi:18, weekAvg:.338, weekOps:.952,  weekHr:2, trendScore:86, trendDir:"hot",  reason:"20歳でAAA 打率 .305 → .338 ▲.033", spark:[.262,.272,.280,.288,.295,.300,.310,.320,.330,.338] },
+  { id:23, name:"Brady House",         team:"ROC", org:"WSH", pos:"SS", level:"AAA", age:21, isPit:false, avg:.312, ops:.891,  hr:6,  rbi:22, weekAvg:.345, weekOps:.975,  weekHr:3, trendScore:84, trendDir:"hot",  reason:"打率 .312 → .345 ▲.033 守備も安定", spark:[.268,.280,.290,.298,.305,.310,.318,.325,.338,.345] },
+  { id:24, name:"Chase Dollander",     team:"ABQ", org:"COL", pos:"SP", level:"AAA", age:22, isPit:true,  era:2.08, whip:0.91, k9:12.4, ip:26, weekEra:1.40, weekWhip:0.78, weekK:17, trendScore:87, trendDir:"hot",  reason:"ERA 2.08 → 1.40 に急降下 ▼0.68", spark:[3.1,2.6,2.2,1.9,1.7,1.5,1.3,1.4,1.5,1.40] },
+  { id:30, name:"Dylan Crews",         team:"HBG", org:"WSH", pos:"OF", level:"AA",  age:22, isPit:false, avg:.325, ops:.932,  hr:7,  rbi:24, weekAvg:.358, weekOps:1.021, weekHr:4, trendScore:94, trendDir:"hot",  reason:"OPS 1.021 突破 4本塁打 昇格秒読み", spark:[.280,.292,.305,.312,.318,.325,.330,.342,.350,.358] },
+  { id:31, name:"Bubba Chandler",      team:"ALT", org:"PIT", pos:"SP", level:"AA",  age:22, isPit:true,  era:1.95, whip:0.82, k9:13.8, ip:23, weekEra:0.75, weekWhip:0.55, weekK:19, trendScore:92, trendDir:"hot",  reason:"ERA 1.95 → 0.75 に急降下 ▼1.20 K/9=13.8", spark:[2.8,2.3,2.0,1.7,1.4,1.2,0.9,0.8,0.7,0.75] },
+  { id:32, name:"Coby Mayo",           team:"BOW", org:"BAL", pos:"3B", level:"AA",  age:23, isPit:false, avg:.308, ops:.912,  hr:8,  rbi:25, weekAvg:.342, weekOps:.998,  weekHr:3, trendScore:89, trendDir:"hot",  reason:"打率 .308 → .342 ▲.034 AAA昇格目前", spark:[.268,.275,.282,.290,.296,.302,.310,.320,.332,.342] },
+  { id:33, name:"Mick Abel",           team:"REA", org:"PHI", pos:"SP", level:"AA",  age:22, isPit:true,  era:2.18, whip:0.92, k9:12.1, ip:21, weekEra:1.05, weekWhip:0.71, weekK:16, trendScore:88, trendDir:"hot",  reason:"ERA 2.18 → 1.05 に急改善 ▼1.13", spark:[3.2,2.8,2.5,2.2,2.0,1.8,1.5,1.2,1.0,1.05] },
+  { id:40, name:"Arjun Nimmala",       team:"DUN", org:"TOR", pos:"SS", level:"A+",  age:19, isPit:false, avg:.295, ops:.852,  hr:4,  rbi:15, weekAvg:.330, weekOps:.935,  weekHr:2, trendScore:87, trendDir:"hot",  reason:"19歳SS 打率 .295 → .330 OPS ▲.083", spark:[.255,.262,.270,.278,.282,.288,.295,.308,.318,.330] },
+  { id:41, name:"Kade Anderson",       team:"KAN", org:"HOU", pos:"SP", level:"A+",  age:21, isPit:true,  era:1.88, whip:0.82, k9:13.2, ip:19, weekEra:0.90, weekWhip:0.62, weekK:17, trendScore:90, trendDir:"hot",  reason:"ERA 1.88 → 0.90 K/9=13.2 HOUトッププロスペクト", spark:[2.8,2.4,2.1,1.8,1.6,1.4,1.1,1.0,0.9,0.90] },
 ];
 
-// ═══════════════════════════════════════════════════
-// 2. メイン機能（セクション切り替え・データ取得）
-// ═══════════════════════════════════════════════════
+const FALLBACK_GAMES = [
+  { away:"TOR", home:"MIN", aS:1, hS:4, status:"Live",  inning:"8回表", hot:false, awayRec:"18-14", homeRec:"20-12" },
+  { away:"BAL", home:"NYY", aS:3, hS:3, status:"Live",  inning:"7回裏", hot:true,  awayRec:"19-13", homeRec:"17-15" },
+  { away:"MIL", home:"WSH", aS:1, hS:3, status:"Live",  inning:"6回表", hot:false, awayRec:"16-16", homeRec:"14-18" },
+  { away:"HOU", home:"BOS", aS:0, hS:1, status:"Live",  inning:"6回裏", hot:false, awayRec:"18-14", homeRec:"19-13" },
+  { away:"CIN", home:"PIT", aS:0, hS:0, status:"Live",  inning:"5回表", hot:false, awayRec:"15-17", homeRec:"16-16" },
+  { away:"SF",  home:"TB",  aS:1, hS:0, status:"Live",  inning:"5回裏", hot:false, awayRec:"17-15", homeRec:"18-14" },
+  { away:"PHI", home:"MIA", aS:7, hS:0, status:"Live",  inning:"7回表", hot:false, awayRec:"22-10", homeRec:"12-20" },
+  { away:"LAD", home:"STL", aS:2, hS:0, status:"Live",  inning:"5回裏", hot:false, awayRec:"23-9",  homeRec:"16-16" },
+  { away:"AZ",  home:"CHC", aS:2, hS:3, status:"Live",  inning:"6回表", hot:false, awayRec:"18-14", homeRec:"17-15" },
+  { away:"ATL", home:"COL", aS:0, hS:0, status:"Live",  inning:"3回表", hot:false, awayRec:"21-11", homeRec:"10-22" },
+];
 
 async function loadAll() {
-    setRefreshSpin(true);
-    // 動作確認のため予備データを入れます
-    PLAYERS = FALLBACK_PLAYERS; 
-    
-    renderTable();
-    updateTime();
-    setRefreshSpin(false);
-
-    // ヒーロースタッツの数字を更新
-    document.getElementById('h-mlb').textContent = PLAYERS.filter(p=>p.level==='MLB').length;
-    document.getElementById('h-minor').textContent = PLAYERS.filter(p=>p.level!=='MLB').length;
+  setRefreshSpin(true);
+  await Promise.all([loadPlayers(), loadScores()]);
+  setRefreshSpin(false);
+  updateTime();
 }
 
-function showSection(id, btn) {
-    ['section-trends', 'section-scores', 'section-search'].forEach(s => {
-        const el = document.getElementById(s);
-        if (el) el.style.display = 'none';
-    });
-    const target = document.getElementById('section-' + id);
-    if (target) target.style.display = 'block';
-    
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+async function loadPlayers() {
+  try {
+    const res = await fetch('/api/players');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    PLAYERS = (data.players || []).map(normalizePlayer);
+    setStatus('ok', 'リアルタイムデータを取得しました');
+    document.getElementById('data-source-lbl').textContent = 'リアルタイム取得';
+  } catch(e) {
+    PLAYERS = FALLBACK_PLAYERS;
+    setStatus('err', 'API接続エラー — オフラインデータを表示中');
+    document.getElementById('data-source-lbl').textContent = 'オフラインデータ';
+  }
+  document.getElementById('table-loading')?.remove();
+  document.getElementById('h-mlb').textContent   = PLAYERS.filter(p=>p.level==='MLB').length;
+  document.getElementById('h-minor').textContent = PLAYERS.filter(p=>p.level!=='MLB').length;
+  document.getElementById('db-count-lbl').textContent = '全 '+PLAYERS.length+' 選手';
+  renderTable();
 }
 
-// ═══════════════════════════════════════════════════
-// 3. 表示ロジック（テーブル・詳細パネル）
-// ═══════════════════════════════════════════════════
+async function loadScores() {
+  try {
+    const res = await fetch('/api/scores');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    GAMES = (data.games || []).map(g => ({
+      away: g.away.abbr, home: g.home.abbr,
+      aS: g.away.score, hS: g.home.score,
+      status: g.status,
+      inning: g.inning ? g.inning+'回'+(g.inningHalf==='Top'?'表':'裏') : '',
+      awayRec: g.away.wins+'-'+g.away.losses,
+      homeRec: g.home.wins+'-'+g.home.losses,
+      hot: g.away.score!=null && g.home.score!=null && Math.abs((g.away.score||0)-(g.home.score||0))<=1,
+    }));
+    document.getElementById('h-games').textContent = GAMES.length;
+  } catch(e) {
+    GAMES = FALLBACK_GAMES;
+    document.getElementById('h-games').textContent = GAMES.length;
+  }
+  renderGamesSidebar();
+}
+
+function normalizePlayer(p) {
+  const isPit = ['SP','RP','P'].includes(p.pos);
+  return {
+    id:p.id, name:p.name, team:p.team, org:p.org||p.team,
+    pos:p.pos, level:p.level, age:p.age, isPit,
+    era:p.era, whip:p.whip, k9:p.k9, ip:p.ip,
+    weekEra:p.era, weekWhip:p.whip, weekK:null,
+    avg:p.avg, ops:p.ops, hr:p.hr, rbi:p.rbi,
+    weekAvg:p.avg, weekOps:p.ops, weekHr:null,
+    trendScore:p.trendScore, trendDir:p.trendDir,
+    reason: isPit ? 'ERA '+fmtE(p.era)+' 上位ランク中' : '打率 '+fmtA(p.avg)+' / OPS '+fmtO(p.ops),
+    spark: genSpark(p),
+  };
+}
+
+function genSpark(p) {
+  const isPit = ['SP','RP','P'].includes(p.pos);
+  const base = isPit ? (p.era||3.5) : (p.avg||0.260);
+  return Array.from({length:10}, (_,i) => {
+    const noise = (Math.random()-0.5)*(isPit?0.6:0.025);
+    const val = base - (isPit?-0.12:0.007)*(i-4) + noise;
+    return parseFloat(isPit ? Math.max(0,val).toFixed(2) : Math.max(0.18,Math.min(0.42,val)).toFixed(3));
+  });
+}
 
 function renderTable() {
-    const container = document.getElementById('trend-table');
-    const header = container.querySelector('.hdr');
-    if (!container || !header) return;
+  const tbl = document.getElementById('trend-table');
+  tbl.querySelectorAll('.trend-row:not(.hdr)').forEach(r=>r.remove());
 
-    container.innerHTML = '';
-    container.appendChild(header);
+  const list = PLAYERS.filter(p => {
+    const posOk = filt.pos==='all'||p.pos===filt.pos||(filt.pos==='INF'&&['1B','2B','3B','SS'].includes(p.pos));
+    const lvOk  = filt.levels.includes(p.level);
+    const qOk   = !filt.q||p.name.toLowerCase().includes(filt.q)||(p.org||p.team||'').toLowerCase().includes(filt.q);
+    return posOk && lvOk && qOk;
+  }).sort((a,b) => b.trendScore - a.trendScore);
 
-    const filtered = PLAYERS.filter(p => {
-        const matchPos = filt.pos === 'all' || p.pos === filt.pos || (filt.pos === 'INF' && ['1B','2B','3B','SS'].includes(p.pos));
-        const matchLvl = filt.levels.includes(p.level);
-        const matchSearch = p.name.toLowerCase().includes(filt.q);
-        return matchPos && matchLvl && matchSearch;
-    }).sort((a, b) => b.trendScore - a.trendScore);
+  if (!list.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:24px;text-align:center;color:var(--text3);font-size:13px;';
+    empty.textContent = '条件に一致する選手が見つかりません';
+    tbl.appendChild(empty);
+    return;
+  }
 
-    filtered.forEach((p, idx) => {
-        const info = getTrendLabel(p);
-        const row = document.createElement('div');
-        row.className = `trend-row ${selectedId === p.id ? 'selected' : ''}`;
-        row.onclick = () => showDetail(p);
-        row.innerHTML = `
-            <div class="rank ${idx < 3 ? 'top' : ''}">${idx + 1}</div>
-            <div>
-                <div class="p-name">${p.name} <span class="badge-level badge-${p.level.toLowerCase().replace('+', '')}">${p.level}</span></div>
-                <div class="p-meta">${p.team} • ${p.pos}</div>
-            </div>
-            <div class="stat-cell" style="color:${info.col}">${info.text}</div>
-            <div class="stat-cell">${info.to}</div>
-            <div class="trend-cell">
-                <div class="trend-bar"><div class="trend-fill t-${p.trendDir}" style="width:${p.trendScore}%"></div></div>
-                <div class="trend-num">${p.trendScore}</div>
-            </div>`;
-        container.appendChild(row);
-    });
+  list.forEach((p, i) => {
+    const fire = p.trendScore>=90 ? '🔥🔥' : p.trendDir==='hot' ? '🔥' : '📈';
+    const tc   = p.trendDir==='hot'?'t-hot':p.trendDir==='warm'?'t-warm':'t-cool';
+    const nc   = p.trendDir==='hot'?'var(--hot)':p.trendDir==='warm'?'var(--warm)':'var(--accent)';
+    const lv   = lvBadge(p.level);
+
+    let deltaHtml = '';
+    if (p.isPit) {
+      const d = ((p.era||0)-(p.weekEra||p.era||0));
+      const improving = d >= 0;
+      deltaHtml = `<div class="change-block">
+        <div class="change-arrow ${improving?'up':'dn'}">${improving?'▼':'▲'}</div>
+        <div class="change-vals">
+          <div class="change-delta ${improving?'up':'dn'}">${Math.abs(d).toFixed(2)}</div>
+          <div class="change-from">ERA改善</div>
+        </div>
+      </div>`;
+    } else {
+      const d = ((p.weekAvg||p.avg||0)-(p.avg||0));
+      const up = d >= 0;
+      deltaHtml = `<div class="change-block">
+        <div class="change-arrow ${up?'up':'dn'}">${up?'▲':'▼'}</div>
+        <div class="change-vals">
+          <div class="change-delta ${up?'up':'dn'}">${fmtA(Math.abs(d))}</div>
+          <div class="change-from">AVG上昇</div>
+        </div>
+      </div>`;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'trend-row'+(selectedId===p.id?' selected':'');
+    row.onclick = () => showDetail(p);
+    row.innerHTML = `
+      <div class="rank ${i<3?'top':''}">${i+1}</div>
+      <div class="fire-col">${fire}</div>
+      <div>
+        <div class="p-name">${p.name}<span class="badge-level ${lv}">${p.level}</span></div>
+        <div class="p-meta">${p.org||p.team} · ${p.pos}${p.age?' · '+p.age+'歳':''}</div>
+        <div class="p-reason">${p.reason}</div>
+      </div>
+      ${deltaHtml}
+      <div class="trend-cell">
+        <div class="trend-bar"><div class="trend-fill ${tc}" style="width:${p.trendScore}%"></div></div>
+        <div class="trend-num" style="color:${nc}">${p.trendScore}</div>
+      </div>`;
+    tbl.appendChild(row);
+  });
 }
 
 function showDetail(p) {
-    selectedId = p.id;
-    renderTable(); 
-    document.getElementById('detail-panel').style.display = 'block';
-    document.getElementById('d-name').textContent = p.name;
-    document.getElementById('d-sub').textContent = `${p.level} | ${p.team} | Age ${p.age}`;
-    
-    const statsGrid = document.getElementById('d-stats');
-    statsGrid.innerHTML = '';
-    const metrics = p.isPit 
-        ? [{l:'ERA', v:p.era, d:p.weekEra, rev:true}, {l:'WHIP', v:p.whip, d:p.weekWhip, rev:true}]
-        : [{l:'AVG', v:p.avg, d:p.weekAvg}, {l:'OPS', v:p.ops, d:p.weekOps}];
+  selectedId = p.id;
+  renderTable();
+  document.getElementById('d-name').textContent = p.name;
+  document.getElementById('d-sub').innerHTML =
+    `${p.org||p.team} · ${p.pos}${p.age?' · '+p.age+'歳':''} · <span class="badge-level ${lvBadge(p.level)}">${p.level}</span>`;
 
-    metrics.forEach(m => {
-        const delta = (m.v - m.d).toFixed(3);
-        const isUp = parseFloat(delta) > 0;
-        const deltaClass = m.rev ? (isUp ? 'dn' : 'up') : (isUp ? 'up' : 'dn');
-        
-        statsGrid.innerHTML += `
-            <div class="stat-box">
-                <div class="s-lbl">${m.l}</div>
-                <div class="s-val">${m.v < 1 && !p.isPit ? fmtAvg(m.v) : m.v}</div>
-                <div class="s-delta ${deltaClass}">${isUp ? '+'+delta : delta}</div>
-            </div>`;
-    });
-    renderSpark(p);
+  let hlBoxes;
+  if (p.isPit) {
+    const eraD  = (p.era||0)-(p.weekEra||p.era||0);
+    const whipD = (p.whip||0)-(p.weekWhip||p.whip||0);
+    hlBoxes = [
+      { lbl:'ERA 改善幅', val:(eraD>=0?'▼':'')+eraD.toFixed(2), sub:fmtE(p.era)+' → '+fmtE(p.weekEra||p.era), cls:eraD>=0?'up':'dn' },
+      { lbl:'直近ERA',    val:fmtE(p.weekEra||p.era),            sub:'直近7日',                                  cls:'up' },
+      { lbl:'直近K数',    val:(p.weekK||'—')+'K',                sub:'K/9 = '+(p.k9?p.k9.toFixed(1):'—'),       cls:'neu' },
+    ];
+  } else {
+    const avgD = (p.weekAvg||p.avg||0)-(p.avg||0);
+    const opsD = (p.weekOps||p.ops||0)-(p.ops||0);
+    hlBoxes = [
+      { lbl:'AVG 上昇幅', val:(avgD>=0?'▲':'▼')+fmtA(Math.abs(avgD)), sub:fmtA(p.avg)+' → '+fmtA(p.weekAvg||p.avg), cls:avgD>=0?'up':'dn' },
+      { lbl:'OPS 上昇幅', val:(opsD>=0?'▲':'▼')+fmtO(Math.abs(opsD)), sub:fmtO(p.ops)+' → '+fmtO(p.weekOps||p.ops), cls:opsD>=0?'up':'dn' },
+      { lbl:'直近HR',     val:(p.weekHr!=null?p.weekHr:'—')+'本',      sub:'通算 '+(p.hr||'—')+'本',                   cls:'neu' },
+    ];
+  }
+  document.getElementById('d-highlights').innerHTML = hlBoxes.map(b=>`
+    <div class="hl-box ${b.cls}">
+      <div class="hl-lbl">${b.lbl}</div>
+      <div class="hl-val">${b.val}</div>
+      <div class="hl-sub">${b.sub}</div>
+    </div>`).join('');
+
+  let statBoxes;
+  if (p.isPit) {
+    const eD = (p.era||0)-(p.weekEra||p.era||0);
+    const wD = (p.whip||0)-(p.weekWhip||p.whip||0);
+    statBoxes = [
+      { l:'ERA（通算）',  v:fmtE(p.era),              d:'',                                          cls:'neu' },
+      { l:'ERA（直近）',  v:fmtE(p.weekEra||p.era),   d:(eD>=0?'▼':'▲')+Math.abs(eD).toFixed(2)+' 改善', cls:eD>=0?'up':'dn' },
+      { l:'WHIP（直近）', v:fmtE(p.weekWhip||p.whip), d:(wD>=0?'▼':'▲')+Math.abs(wD).toFixed(2),   cls:wD>=0?'up':'dn' },
+      { l:'K/9',          v:p.k9?p.k9.toFixed(1):'—', d:p.ip?p.ip+'IP':'',                          cls:'neu' },
+    ];
+  } else {
+    const aD = (p.weekAvg||p.avg||0)-(p.avg||0);
+    const oD = (p.weekOps||p.ops||0)-(p.ops||0);
+    statBoxes = [
+      { l:'AVG（通算）', v:fmtA(p.avg),            d:'',                                           cls:'neu' },
+      { l:'AVG（直近）', v:fmtA(p.weekAvg||p.avg), d:(aD>=0?'▲':'▼')+fmtA(Math.abs(aD))+' 上昇', cls:aD>=0?'up':'dn' },
+      { l:'OPS（直近）', v:fmtO(p.weekOps||p.ops), d:(oD>=0?'▲':'▼')+fmtO(Math.abs(oD)),         cls:oD>=0?'up':'dn' },
+      { l:'HR',          v:p.hr??'—',               d:p.rbi?'RBI '+p.rbi:'',                       cls:'neu' },
+    ];
+  }
+  document.getElementById('d-stats').innerHTML = statBoxes.map(b=>`
+    <div class="stat-box">
+      <div class="s-lbl">${b.l}</div>
+      <div class="s-val">${b.v}</div>
+      <div class="s-delta ${b.cls}">${b.d||'—'}</div>
+    </div>`).join('');
+
+  const vals = p.spark || [];
+  const mx = Math.max(...vals), mn = Math.min(...vals), rng = mx-mn||0.001;
+  document.getElementById('spark-range').textContent =
+    p.isPit ? `ERA 最高 ${mx.toFixed(2)} → 最低 ${mn.toFixed(2)}` : `AVG 最低 ${fmtA(mn)} → 最高 ${fmtA(mx)}`;
+
+  const sparkRow = document.getElementById('d-spark');
+  const lblRow   = document.getElementById('d-spark-lbl');
+  sparkRow.innerHTML = '';
+  lblRow.innerHTML   = '';
+
+  vals.forEach((v, i) => {
+    const h      = Math.round(((p.isPit ? mx-v : v-mn)/rng)*48+12);
+    const isRec  = i >= vals.length-3;
+    const isGood = p.isPit ? v<=mn+rng*0.4 : v>=mx-rng*0.4;
+    const col    = isRec ? 'var(--accent)' : isGood ? '#1a5c38' : 'var(--bg3)';
+    const wrap   = document.createElement('div');
+    wrap.className = 'spark-bar-wrap';
+    wrap.innerHTML = `
+      <div class="spark-val ${isRec?'hl':''}">${p.isPit ? v.toFixed(2) : fmtA(v)}</div>
+      <div class="spark-bar" style="height:${h}px;background:${col};width:100%"></div>`;
+    sparkRow.appendChild(wrap);
+    const gl = document.createElement('div');
+    gl.className = 'spark-game-lbl';
+    gl.textContent = i===0?'G1':i===vals.length-1?'最新':`${i+1}G`;
+    lblRow.appendChild(gl);
+  });
+
+  const last3  = vals.slice(-3).reduce((a,b)=>a+b,0)/3;
+  const first3 = vals.slice(0,3).reduce((a,b)=>a+b,0)/3;
+  const change = p.isPit ? first3-last3 : last3-first3;
+  const cStr   = p.isPit ? change.toFixed(2) : fmtA(Math.abs(last3-first3));
+  const cLbl   = change>=0 ? (p.isPit?'▼ 改善':'▲ 上昇') : (p.isPit?'▲ 悪化':'▼ 下降');
+  const cCol   = change>=0 ? 'var(--accent)' : 'var(--hot)';
+  const nc     = p.trendDir==='hot'?'var(--hot)':'var(--warm)';
+
+  document.getElementById('d-summary').innerHTML = `
+    <div class="summary-box">
+      <div class="s-lbl">急上昇スコア</div>
+      <div class="s-val" style="color:${nc}">${p.trendScore}</div>
+      <div class="s-sub">/100</div>
+    </div>
+    <div class="summary-box">
+      <div class="s-lbl">10試合 変化幅</div>
+      <div class="s-val" style="color:${cCol}">${cStr}</div>
+      <div class="s-sub">${cLbl}</div>
+    </div>
+    <div class="summary-box">
+      <div class="s-lbl">直近3試合 平均</div>
+      <div class="s-val">${p.isPit?last3.toFixed(2):fmtA(last3)}</div>
+      <div class="s-sub">${p.isPit?'ERA':'AVG'}</div>
+    </div>`;
+
+  document.getElementById('detail-panel').style.display = '';
+  document.getElementById('detail-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
-function renderSpark(p) {
-    const container = document.getElementById('d-spark');
-    const labelRow = document.getElementById('d-spark-lbl');
-    container.innerHTML = ''; labelRow.innerHTML = '';
-    const max = Math.max(...p.spark);
-    const min = Math.min(...p.spark);
-    p.spark.forEach((val, i) => {
-        const height = ((val - min) / (max - min || 1) * 80) + 20;
-        container.innerHTML += `
-            <div class="spark-bar-wrap">
-                <div class="spark-val ${i === 9 ? 'hl' : ''}">${p.isPit ? val : fmtAvg(val)}</div>
-                <div class="spark-bar" style="height:${height}%; background:${i === 9 ? 'var(--accent)' : 'var(--bg3)'}"></div>
-            </div>`;
-        labelRow.innerHTML += `<div class="spark-game-lbl">G${i+1}</div>`;
-    });
+function closeDetail() {
+  selectedId = null;
+  document.getElementById('detail-panel').style.display = 'none';
+  renderTable();
 }
 
-// ═══════════════════════════════════════════════════
-// 4. 便利ツール（ボタン・フィルター・書式）
-// ═══════════════════════════════════════════════════
+function renderGamesSidebar() {
+  const container = document.getElementById('live-games');
+  let list = GAMES;
+  if (gameFilter==='live')  list = GAMES.filter(g=>g.status==='Live');
+  if (gameFilter==='final') list = GAMES.filter(g=>g.status==='Final');
+  renderGameCards(container, list);
+}
+
+function renderGameCards(container, list) {
+  container.innerHTML = '';
+  if (!list.length) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">該当する試合はありません</div>';
+    return;
+  }
+  list.forEach(g => {
+    const hW = g.hS!=null && g.aS!=null && g.hS>g.aS;
+    const aW = g.hS!=null && g.aS!=null && g.aS>g.hS;
+    const el = document.createElement('div');
+    el.className = 'game-card'+(g.hot?' hot':'');
+    el.innerHTML = `
+      <div class="game-hd">
+        <span class="g-status ${g.status==='Final'?'final':''}">${g.status==='Live'?'● LIVE':g.status==='Final'?'終了':'予定'}</span>
+        <span class="g-inning">${g.inning||''}</span>
+      </div>
+      <div class="matchup">
+        <div class="team"><div class="t-abbr ${aW?'win':''}">${g.away}</div><div class="t-rec">${g.awayRec||''}</div></div>
+        <div class="scores">
+          <div class="score ${aW?'win':''}">${g.aS??'—'}</div>
+          <div class="score-sep">–</div>
+          <div class="score ${hW?'win':''}">${g.hS??'—'}</div>
+        </div>
+        <div class="team"><div class="t-abbr ${hW?'win':''}">${g.home}</div><div class="t-rec">${g.homeRec||''}</div></div>
+      </div>`;
+    container.appendChild(el);
+  });
+}
 
 function setPos(pos, btn) {
-    filt.pos = pos;
-    btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    renderTable();
+  filt.pos = pos;
+  document.querySelectorAll('#pos-filters .filter-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderTable();
 }
 
-function toggleLevel(lvl, btn) {
-    if (filt.levels.includes(lvl)) filt.levels = filt.levels.filter(l => l !== lvl);
-    else filt.levels.push(lvl);
-    btn.classList.toggle('on');
-    renderTable();
+function toggleLevel(lv, btn) {
+  const i = filt.levels.indexOf(lv);
+  if (i===-1) { filt.levels.push(lv); btn.classList.add('on'); }
+  else if (filt.levels.length > 1) { filt.levels.splice(i,1); btn.classList.remove('on'); }
+  renderTable();
 }
 
-function setSearch(val) {
-    filt.q = val.toLowerCase();
-    renderTable();
+function setSearch(v) { filt.q = v.toLowerCase(); renderTable(); }
+
+function setGameFilter(type, btn) {
+  gameFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b=>{
+    if(['LIVE','終了','全試合'].includes(b.textContent)) b.classList.remove('on');
+  });
+  btn.classList.add('on');
+  renderGamesSidebar();
 }
 
-function getTrendLabel(p) {
-    const col = p.trendDir === 'hot' ? 'var(--hot)' : 'var(--accent)';
-    return { text: p.isPit ? 'ERA 改善中' : 'OPS 上昇中', to: p.isPit ? p.era : p.ops, col };
+function dbSearch(v) {
+  const res = document.getElementById('db-results');
+  if (!v || v.length < 1) {
+    res.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0">名前・チーム・ポジションを入力してください</div>';
+    return;
+  }
+  const found = PLAYERS.filter(p =>
+    p.name.toLowerCase().includes(v.toLowerCase()) ||
+    (p.org||p.team||'').toLowerCase().includes(v.toLowerCase()) ||
+    p.pos.toLowerCase().includes(v.toLowerCase()) ||
+    p.level.toLowerCase().includes(v.toLowerCase())
+  );
+  if (!found.length) { res.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:16px 0">「${v}」に一致する選手が見つかりません</div>`; return; }
+  res.innerHTML = found.map(p => {
+    const nc = p.trendDir==='hot'?'var(--hot)':'var(--warm)';
+    const main = p.isPit ? { l:'ERA', v:fmtE(p.era), w:fmtE(p.weekEra||p.era) } : { l:'AVG', v:fmtA(p.avg), w:fmtA(p.weekAvg||p.avg) };
+    return `<div class="db-card" onclick="showSection('trends'); setTimeout(()=>showDetail(PLAYERS.find(x=>x.id===${p.id})),50)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px">${p.name}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${p.org||p.team} · ${p.pos} · <span class="badge-level ${lvBadge(p.level)}">${p.level}</span></div>
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:${nc}">${p.trendScore}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${main.l} 通算</div>
+          <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-top:2px">${main.v}</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${main.l} 直近</div>
+          <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-top:2px;color:var(--accent)">${main.w}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.5">${p.reason||''}</div>
+    </div>`;
+  }).join('');
 }
 
-function fmtAvg(v) { return '.' + Math.round(v * 1000).toString().padStart(3, '0'); }
-function setRefreshSpin(active) { 
-    const icon = document.getElementById('refresh-icon');
-    if (icon) icon.classList.toggle('spin', active); 
+function showSection(id, btn) {
+  ['trends','scores','search'].forEach(s=>{
+    document.getElementById('section-'+s).style.display = s===id?'':'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else {
+    const idx = ['trends','scores','search'].indexOf(id);
+    document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
+  }
+  if (id==='scores') renderGameCards(document.getElementById('all-games'), GAMES);
 }
-function updateTime() { 
-    const el = document.getElementById('hero-time');
-    if (el) el.textContent = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}); 
-}
-function closeDetail() { document.getElementById('detail-panel').style.display = 'none'; selectedId = null; renderTable(); }
 
-// ページ読み込み時に実行
-window.onload = loadAll;
+function fmtA(v){ return v!=null ? '.'+String(Math.round(v*1000)).padStart(3,'0') : '.---'; }
+function fmtE(v){ return v!=null ? v.toFixed(2) : '-.-'; }
+function fmtO(v){ return v!=null ? v.toFixed(3) : '.---'; }
+
+function lvBadge(lv){
+  if(lv==='MLB') return 'badge-level badge-mlb';
+  if(lv==='AAA') return 'badge-level badge-aaa';
+  if(lv==='AA')  return 'badge-level badge-aa';
+  return 'badge-level badge-a';
+}
+
+function setStatus(type, msg){
+  const el = document.getElementById('api-status');
+  if (!el) return;
+  el.innerHTML = `<div class="status-banner ${type}">${msg}</div>`;
+  if (type==='ok') setTimeout(()=>{ el.innerHTML=''; }, 4000);
+}
+
+function setRefreshSpin(on){
+  const el = document.getElementById('refresh-icon');
+  if (el) el.className = on ? 'spin' : '';
+}
+
+function updateTime(){
+  const now = new Date();
+  const h = String((now.getUTCHours()+9)%24).padStart(2,'0');
+  const m = String(now.getUTCMinutes()).padStart(2,'0');
+  const el = document.getElementById('hero-time');
+  if (el) el.textContent = h+':'+m;
+}
+
+loadAll();
+updateTime();
+setInterval(loadAll, 5 * 60 * 1000);
 </script>
 </body>
 </html>
