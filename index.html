@@ -60,6 +60,7 @@
   .search-wrap input:focus{border-color:var(--border2);}
   .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px;pointer-events:none;}
 
+  /* ── TREND TABLE ── */
   .trend-table{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
   .trend-row{display:grid;grid-template-columns:28px 28px 1fr 110px 100px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);gap:8px;cursor:pointer;transition:background 0.12s;}
   .trend-row:last-child{border-bottom:none;}
@@ -81,6 +82,7 @@
   .badge-aa{background:rgba(176,96,255,0.15);color:var(--purple);}
   .badge-a{background:rgba(0,232,122,0.1);color:var(--accent);}
 
+  /* 変化幅表示 */
   .change-block{display:flex;align-items:center;gap:5px;}
   .change-arrow{font-size:14px;font-weight:700;}
   .change-arrow.up{color:var(--accent);}
@@ -97,11 +99,13 @@
   .t-hot{background:var(--hot);} .t-warm{background:var(--warm);} .t-cool{background:var(--accent);}
   .trend-num{font-family:'DM Mono',monospace;font-size:11px;min-width:24px;text-align:right;}
 
+  /* ── DETAIL PANEL ── */
   .detail-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:16px;}
   .detail-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
   .d-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;line-height:1.1;}
   .d-sub{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;}
 
+  /* ハイライトボックス（変化幅を大きく） */
   .highlight-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
   .hl-box{border-radius:var(--radius-sm);padding:12px 14px;text-align:center;}
   .hl-box.up{background:rgba(0,232,122,0.08);border:1px solid rgba(0,232,122,0.2);}
@@ -120,6 +124,7 @@
   .s-delta{font-size:11px;font-family:'DM Mono',monospace;margin-top:2px;}
   .s-delta.up{color:var(--accent);} .s-delta.dn{color:var(--hot);} .s-delta.neu{color:var(--text3);}
 
+  /* スパークチャート */
   .spark-section{margin-top:4px;}
   .spark-label-row{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;display:flex;justify-content:space-between;}
   .spark-row{display:flex;gap:3px;align-items:flex-end;height:64px;}
@@ -139,6 +144,7 @@
   .close-btn{background:var(--bg3);border:none;color:var(--text3);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;}
   .close-btn:hover{color:var(--text);background:var(--border2);}
 
+  /* ── SIDEBAR GAMES ── */
   .sidebar{display:flex;flex-direction:column;gap:12px;}
   .games-scroll{max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
   .games-scroll::-webkit-scrollbar{width:3px;}
@@ -203,6 +209,7 @@
     <div class="stat-tile"><div class="lbl">最終取得</div><div class="val" id="hero-time" style="font-size:18px">—</div><div class="sub">JST 自動更新</div></div>
   </div>
 
+  <!-- TRENDS -->
   <div id="section-trends">
     <div class="two-col">
       <div>
@@ -218,6 +225,7 @@
           <button class="filter-btn" onclick="setPos('OF',this)">外野</button>
           <button class="filter-btn" onclick="setPos('INF',this)">内野</button>
           <button class="filter-btn" onclick="setPos('C',this)">捕手</button>
+          <button class="filter-btn" onclick="setPos('DH',this)">DH</button>
         </div>
         <div class="filter-row" id="lv-filters">
           <button class="filter-btn on" onclick="toggleLevel('MLB',this)">MLB</button>
@@ -243,13 +251,17 @@
             <div class="skeleton loading-row"></div>
           </div>
         </div>
+
         <div class="detail-panel" id="detail-panel" style="display:none">
           <div class="detail-hd">
             <div><div class="d-name" id="d-name"></div><div class="d-sub" id="d-sub"></div></div>
             <button class="close-btn" onclick="closeDetail()">×</button>
           </div>
+          <!-- 変化幅ハイライト（大きく表示） -->
           <div class="highlight-boxes" id="d-highlights"></div>
+          <!-- 通常スタットグリッド -->
           <div class="stat-grid" id="d-stats"></div>
+          <!-- スパークチャート -->
           <div class="spark-section">
             <div class="spark-label-row">
               <span>直近10試合の推移（左が古い → 右が最新）</span>
@@ -261,6 +273,8 @@
           <div class="trend-summary" id="d-summary"></div>
         </div>
       </div>
+
+      <!-- SIDEBAR GAMES -->
       <div class="sidebar">
         <div class="section-hd">
           <div class="section-title">スコア</div>
@@ -279,6 +293,7 @@
     </div>
   </div>
 
+  <!-- SCORES -->
   <div id="section-scores">
     <div class="section-hd">
       <div class="section-title">全試合スコア</div>
@@ -287,6 +302,7 @@
     <div class="all-games-grid" id="all-games"></div>
   </div>
 
+  <!-- SEARCH -->
   <div id="section-search">
     <div class="section-hd"><div class="section-title">選手データベース <span id="db-count-lbl"></span></div></div>
     <div class="search-wrap" style="max-width:480px">
@@ -300,34 +316,139 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════
+// STATE（変数は1回だけ宣言）
+// ═══════════════════════════════════════
 let PLAYERS    = [];
 let GAMES      = [];
 let selectedId = null;
 let gameFilter = 'live';
 let filt = { pos:'all', levels:['MLB'], q:'' };
 
+// ═══════════════════════════════════════
+// フォールバックデータ（API失敗時）
+// ═══════════════════════════════════════
 const FALLBACK_PLAYERS = [
-  { id:1,  name:"Paul Skenes",         team:"PIT", org:"PIT", pos:"SP", level:"MLB", age:23, isPit:true,  era:1.84, whip:0.89, k9:13.2, ip:44,  weekEra:0.64, weekWhip:0.72, weekK:18,  trendScore:96, trendDir:"hot",  reason:"ERA 1.84 → 直近 0.64 に急降下 ▼1.20改善", spark:[2.1,1.8,1.5,0.9,2.4,1.2,0.8,1.1,0.6,0.64] },
-  { id:2,  name:"Jackson Chourio",     team:"MIL", org:"MIL", pos:"OF", level:"MLB", age:21, isPit:false, avg:.341, ops:.962,  hr:9,  rbi:28, weekAvg:.378, weekOps:1.041, weekHr:4, trendScore:95, trendDir:"hot",  reason:"打率 .341 → 直近 .378 に急上昇 ▲.037", spark:[.285,.291,.310,.322,.315,.340,.358,.362,.375,.378] },
-  { id:3,  name:"Bobby Witt Jr.",      team:"KC",  org:"KC",  pos:"SS", level:"MLB", age:24, isPit:false, avg:.318, ops:.928,  hr:11, rbi:34, weekAvg:.348, weekOps:1.005, weekHr:3, trendScore:89, trendDir:"hot",  reason:"OPS .928 → 直近 1.005 に突入 ▲.077", spark:[.285,.295,.302,.310,.315,.320,.328,.335,.342,.348] },
-  { id:4,  name:"Emmanuel Clase",      team:"CLE", org:"CLE", pos:"RP", level:"MLB", age:27, isPit:true,  era:0.71, whip:0.62, k9:11.4, ip:25, weekEra:0.00, weekWhip:0.40, weekK:8,  trendScore:91, trendDir:"hot",  reason:"直近7試合 完全無失点 ERA 0.71 → 0.00", spark:[0.9,0.5,1.0,0.0,0.0,0.5,0.0,1.0,0.0,0.00] },
-  { id:5,  name:"Wyatt Langford",      team:"TEX", org:"TEX", pos:"OF", level:"MLB", age:23, isPit:false, avg:.318, ops:.901,  hr:7,  rbi:22, weekAvg:.356, weekOps:.978,  weekHr:3, trendScore:88, trendDir:"hot",  reason:"7日連続安打中 打率 .318 → .356 ▲.038", spark:[.265,.280,.295,.302,.318,.325,.340,.348,.352,.356] },
-  { id:6,  name:"Ryan Helsley",        team:"STL", org:"STL", pos:"RP", level:"MLB", age:29, isPit:true,  era:1.05, whip:0.70, k9:14.2, ip:17, weekEra:0.00, weekWhip:0.43, weekK:7,  trendScore:83, trendDir:"hot",  reason:"直近5試合無失点 ERA 1.05 → 0.00 K/9=14.2", spark:[1.5,0.0,0.9,0.0,1.8,0.0,0.0,0.0,1.0,0.00] },
-  { id:7,  name:"Junior Caminero",     team:"TB",  org:"TB",  pos:"3B", level:"MLB", age:21, isPit:false, avg:.302, ops:.889,  hr:10, rbi:31, weekAvg:.333, weekOps:.955,  weekHr:3, trendScore:86, trendDir:"hot",  reason:"21歳が覚醒 打率 .302 → .333 ▲.031", spark:[.245,.265,.278,.289,.295,.305,.312,.322,.330,.333] },
-  { id:8,  name:"CJ Abrams",           team:"WSH", org:"WSH", pos:"SS", level:"MLB", age:24, isPit:false, avg:.295, ops:.821,  hr:5,  rbi:19, weekAvg:.340, weekOps:.935,  weekHr:2, trendScore:80, trendDir:"hot",  reason:"打率 .295 → .340 に急上昇 ▲.045", spark:[.255,.265,.272,.280,.288,.295,.310,.320,.332,.340] },
-  { id:9,  name:"Tarik Skubal",        team:"DET", org:"DET", pos:"SP", level:"MLB", age:28, isPit:true,  era:2.05, whip:0.98, k9:11.4, ip:52, weekEra:1.12, weekWhip:0.81, weekK:16, trendScore:88, trendDir:"hot",  reason:"ERA 2.05 → 直近 1.12 に改善 ▼0.93", spark:[2.8,2.4,2.1,1.9,2.3,1.8,1.4,1.2,1.1,1.12] },
-  { id:10, name:"Adley Rutschman",     team:"BAL", org:"BAL", pos:"C",  level:"MLB", age:27, isPit:false, avg:.276, ops:.862,  hr:7,  rbi:25, weekAvg:.318, weekOps:.952,  weekHr:3, trendScore:77, trendDir:"warm", reason:"打率 .276 → .318 に上昇 ▲.042", spark:[.240,.252,.260,.268,.272,.278,.285,.298,.308,.318] },
-  { id:20, name:"James Wood",          team:"ROC", org:"WSH", pos:"OF", level:"AAA", age:22, isPit:false, avg:.321, ops:.942,  hr:8,  rbi:26, weekAvg:.355, weekOps:1.018, weekHr:3, trendScore:91, trendDir:"hot",  reason:"OPS .942 → 1.018 突破 MLB昇格候補筆頭", spark:[.278,.285,.295,.305,.312,.318,.325,.335,.345,.355] },
-  { id:21, name:"Jacob Misiorowski",   team:"NAS", org:"MIL", pos:"SP", level:"AAA", age:23, isPit:true,  era:1.62, whip:0.78, k9:14.1, ip:28, weekEra:0.90, weekWhip:0.60, weekK:21, trendScore:93, trendDir:"hot",  reason:"K/9=14.1 リーグ首位 ERA 1.62 → 0.90", spark:[2.5,2.0,1.8,1.4,1.2,1.0,0.8,1.1,0.9,0.90] },
-  { id:22, name:"Max Clark",           team:"TOL", org:"DET", pos:"OF", level:"AAA", age:20, isPit:false, avg:.305, ops:.878,  hr:5,  rbi:18, weekAvg:.338, weekOps:.952,  weekHr:2, trendScore:86, trendDir:"hot",  reason:"20歳でAAA 打率 .305 → .338 ▲.033", spark:[.262,.272,.280,.288,.295,.300,.310,.320,.330,.338] },
-  { id:23, name:"Brady House",         team:"ROC", org:"WSH", pos:"SS", level:"AAA", age:21, isPit:false, avg:.312, ops:.891,  hr:6,  rbi:22, weekAvg:.345, weekOps:.975,  weekHr:3, trendScore:84, trendDir:"hot",  reason:"打率 .312 → .345 ▲.033 守備も安定", spark:[.268,.280,.290,.298,.305,.310,.318,.325,.338,.345] },
-  { id:24, name:"Chase Dollander",     team:"ABQ", org:"COL", pos:"SP", level:"AAA", age:22, isPit:true,  era:2.08, whip:0.91, k9:12.4, ip:26, weekEra:1.40, weekWhip:0.78, weekK:17, trendScore:87, trendDir:"hot",  reason:"ERA 2.08 → 1.40 に急降下 ▼0.68", spark:[3.1,2.6,2.2,1.9,1.7,1.5,1.3,1.4,1.5,1.40] },
-  { id:30, name:"Dylan Crews",         team:"HBG", org:"WSH", pos:"OF", level:"AA",  age:22, isPit:false, avg:.325, ops:.932,  hr:7,  rbi:24, weekAvg:.358, weekOps:1.021, weekHr:4, trendScore:94, trendDir:"hot",  reason:"OPS 1.021 突破 4本塁打 昇格秒読み", spark:[.280,.292,.305,.312,.318,.325,.330,.342,.350,.358] },
-  { id:31, name:"Bubba Chandler",      team:"ALT", org:"PIT", pos:"SP", level:"AA",  age:22, isPit:true,  era:1.95, whip:0.82, k9:13.8, ip:23, weekEra:0.75, weekWhip:0.55, weekK:19, trendScore:92, trendDir:"hot",  reason:"ERA 1.95 → 0.75 に急降下 ▼1.20 K/9=13.8", spark:[2.8,2.3,2.0,1.7,1.4,1.2,0.9,0.8,0.7,0.75] },
-  { id:32, name:"Coby Mayo",           team:"BOW", org:"BAL", pos:"3B", level:"AA",  age:23, isPit:false, avg:.308, ops:.912,  hr:8,  rbi:25, weekAvg:.342, weekOps:.998,  weekHr:3, trendScore:89, trendDir:"hot",  reason:"打率 .308 → .342 ▲.034 AAA昇格目前", spark:[.268,.275,.282,.290,.296,.302,.310,.320,.332,.342] },
-  { id:33, name:"Mick Abel",           team:"REA", org:"PHI", pos:"SP", level:"AA",  age:22, isPit:true,  era:2.18, whip:0.92, k9:12.1, ip:21, weekEra:1.05, weekWhip:0.71, weekK:16, trendScore:88, trendDir:"hot",  reason:"ERA 2.18 → 1.05 に急改善 ▼1.13", spark:[3.2,2.8,2.5,2.2,2.0,1.8,1.5,1.2,1.0,1.05] },
-  { id:40, name:"Arjun Nimmala",       team:"DUN", org:"TOR", pos:"SS", level:"A+",  age:19, isPit:false, avg:.295, ops:.852,  hr:4,  rbi:15, weekAvg:.330, weekOps:.935,  weekHr:2, trendScore:87, trendDir:"hot",  reason:"19歳SS 打率 .295 → .330 OPS ▲.083", spark:[.255,.262,.270,.278,.282,.288,.295,.308,.318,.330] },
-  { id:41, name:"Kade Anderson",       team:"KAN", org:"HOU", pos:"SP", level:"A+",  age:21, isPit:true,  era:1.88, whip:0.82, k9:13.2, ip:19, weekEra:0.90, weekWhip:0.62, weekK:17, trendScore:90, trendDir:"hot",  reason:"ERA 1.88 → 0.90 K/9=13.2 HOUトッププロスペクト", spark:[2.8,2.4,2.1,1.8,1.6,1.4,1.1,1.0,0.9,0.90] },
+  // ── MLB 投手
+  { id:1,  name:"Paul Skenes",         team:"PIT", org:"PIT", pos:"SP", level:"MLB", age:23, isPit:true,
+    era:1.84, whip:0.89, k9:13.2, ip:44, weekEra:0.64, weekWhip:0.72, weekK:18,
+    trendScore:96, trendDir:"hot",
+    reason:"ERA 1.84 → 直近 0.64 ▼1.20改善 / WHIP 0.89 → 0.72 / K/9=13.2 奪三振急増",
+    spark:[2.1,1.8,1.5,0.9,2.4,1.2,0.8,1.1,0.6,0.64] },
+  { id:4,  name:"Emmanuel Clase",      team:"CLE", org:"CLE", pos:"RP", level:"MLB", age:27, isPit:true,
+    era:0.71, whip:0.62, k9:11.4, ip:25, weekEra:0.00, weekWhip:0.40, weekK:8,
+    trendScore:91, trendDir:"hot",
+    reason:"ERA 0.71 → 直近 0.00 ▼0.71改善 / 直近7試合完全無失点・セーブ5",
+    spark:[0.9,0.5,1.0,0.0,0.0,0.5,0.0,1.0,0.0,0.00] },
+  { id:9,  name:"Tarik Skubal",        team:"DET", org:"DET", pos:"SP", level:"MLB", age:28, isPit:true,
+    era:2.05, whip:0.98, k9:11.4, ip:52, weekEra:1.12, weekWhip:0.81, weekK:16,
+    trendScore:88, trendDir:"hot",
+    reason:"ERA 2.05 → 直近 1.12 ▼0.93改善 / WHIP 0.98 → 0.81改善",
+    spark:[2.8,2.4,2.1,1.9,2.3,1.8,1.4,1.2,1.1,1.12] },
+  { id:6,  name:"Ryan Helsley",        team:"STL", org:"STL", pos:"RP", level:"MLB", age:29, isPit:true,
+    era:1.05, whip:0.70, k9:14.2, ip:17, weekEra:0.00, weekWhip:0.43, weekK:7,
+    trendScore:83, trendDir:"hot",
+    reason:"ERA 1.05 → 直近 0.00 ▼1.05改善 / K/9=14.2 直近5試合無失点",
+    spark:[1.5,0.0,0.9,0.0,1.8,0.0,0.0,0.0,1.0,0.00] },
+  // ── MLB 野手
+  { id:11, name:"Shohei Ohtani",       team:"LAD", org:"LAD", pos:"DH", level:"MLB", age:30, isPit:false,
+    avg:.312, ops:.985, hr:14, rbi:42, weekAvg:.348, weekOps:1.058, weekHr:4,
+    trendScore:97, trendDir:"hot",
+    reason:"打率 .312 → 直近 .348 ▲.036 / OPS .985 → 1.058 ▲.073 / 直近7日4HR",
+    spark:[.275,.285,.295,.305,.312,.318,.328,.335,.342,.348] },
+  { id:2,  name:"Jackson Chourio",     team:"MIL", org:"MIL", pos:"OF", level:"MLB", age:21, isPit:false,
+    avg:.341, ops:.962, hr:9, rbi:28, weekAvg:.378, weekOps:1.041, weekHr:4,
+    trendScore:95, trendDir:"hot",
+    reason:"打率 .341 → 直近 .378 ▲.037上昇 / OPS .962 → 1.041 ▲.079 / OPS1.0突破",
+    spark:[.285,.291,.310,.322,.315,.340,.358,.362,.375,.378] },
+  { id:3,  name:"Bobby Witt Jr.",      team:"KC",  org:"KC",  pos:"SS", level:"MLB", age:24, isPit:false,
+    avg:.318, ops:.928, hr:11, rbi:34, weekAvg:.348, weekOps:1.005, weekHr:3,
+    trendScore:89, trendDir:"hot",
+    reason:"打率 .318 → 直近 .348 ▲.030 / OPS .928 → 1.005 ▲.077上昇",
+    spark:[.285,.295,.302,.310,.315,.320,.328,.335,.342,.348] },
+  { id:5,  name:"Wyatt Langford",      team:"TEX", org:"TEX", pos:"OF", level:"MLB", age:23, isPit:false,
+    avg:.318, ops:.901, hr:7, rbi:22, weekAvg:.356, weekOps:.978, weekHr:3,
+    trendScore:88, trendDir:"hot",
+    reason:"打率 .318 → 直近 .356 ▲.038 / OPS .901 → .978 ▲.077 / 7日連続安打中",
+    spark:[.265,.280,.295,.302,.318,.325,.340,.348,.352,.356] },
+  { id:12, name:"Yordan Alvarez",      team:"HOU", org:"HOU", pos:"DH", level:"MLB", age:27, isPit:false,
+    avg:.295, ops:.952, hr:11, rbi:35, weekAvg:.338, weekOps:1.028, weekHr:3,
+    trendScore:85, trendDir:"hot",
+    reason:"打率 .295 → 直近 .338 ▲.043 / OPS .952 → 1.028 ▲.076上昇",
+    spark:[.258,.265,.272,.280,.285,.292,.302,.315,.325,.338] },
+  { id:7,  name:"Junior Caminero",     team:"TB",  org:"TB",  pos:"3B", level:"MLB", age:21, isPit:false,
+    avg:.302, ops:.889, hr:10, rbi:31, weekAvg:.333, weekOps:.955, weekHr:3,
+    trendScore:86, trendDir:"hot",
+    reason:"打率 .302 → 直近 .333 ▲.031 / OPS .889 → .955 ▲.066 / HR月10本ペース",
+    spark:[.245,.265,.278,.289,.295,.305,.312,.322,.330,.333] },
+  { id:8,  name:"CJ Abrams",           team:"WSH", org:"WSH", pos:"SS", level:"MLB", age:24, isPit:false,
+    avg:.295, ops:.821, hr:5, rbi:19, weekAvg:.340, weekOps:.935, weekHr:2,
+    trendScore:80, trendDir:"hot",
+    reason:"打率 .295 → 直近 .340 ▲.045 / OPS .821 → .935 ▲.114急上昇",
+    spark:[.255,.265,.272,.280,.288,.295,.310,.320,.332,.340] },
+  { id:10, name:"Adley Rutschman",     team:"BAL", org:"BAL", pos:"C",  level:"MLB", age:27, isPit:false,
+    avg:.276, ops:.862, hr:7, rbi:25, weekAvg:.318, weekOps:.952, weekHr:3,
+    trendScore:77, trendDir:"warm",
+    reason:"打率 .276 → 直近 .318 ▲.042 / OPS .862 → .952 ▲.090上昇",
+    spark:[.240,.252,.260,.268,.272,.278,.285,.298,.308,.318] },
+  // ── AAA
+  { id:21, name:"Jacob Misiorowski",   team:"NAS", org:"MIL", pos:"SP", level:"AAA", age:23, isPit:true,
+    era:1.62, whip:0.78, k9:14.1, ip:28, weekEra:0.90, weekWhip:0.60, weekK:21,
+    trendScore:93, trendDir:"hot",
+    reason:"ERA 1.62 → 直近 0.90 ▼0.72改善 / K/9=14.1 リーグ首位 / 直近21K",
+    spark:[2.5,2.0,1.8,1.4,1.2,1.0,0.8,1.1,0.9,0.90] },
+  { id:20, name:"James Wood",          team:"ROC", org:"WSH", pos:"OF", level:"AAA", age:22, isPit:false,
+    avg:.321, ops:.942, hr:8, rbi:26, weekAvg:.355, weekOps:1.018, weekHr:3,
+    trendScore:91, trendDir:"hot",
+    reason:"打率 .321 → 直近 .355 ▲.034 / OPS .942 → 1.018 ▲.076 / MLB昇格候補筆頭",
+    spark:[.278,.285,.295,.305,.312,.318,.325,.335,.345,.355] },
+  { id:24, name:"Chase Dollander",     team:"ABQ", org:"COL", pos:"SP", level:"AAA", age:22, isPit:true,
+    era:2.08, whip:0.91, k9:12.4, ip:26, weekEra:1.40, weekWhip:0.78, weekK:17,
+    trendScore:87, trendDir:"hot",
+    reason:"ERA 2.08 → 直近 1.40 ▼0.68改善 / WHIP 0.91 → 0.78改善",
+    spark:[3.1,2.6,2.2,1.9,1.7,1.5,1.3,1.4,1.5,1.40] },
+  { id:22, name:"Max Clark",           team:"TOL", org:"DET", pos:"OF", level:"AAA", age:20, isPit:false,
+    avg:.305, ops:.878, hr:5, rbi:18, weekAvg:.338, weekOps:.952, weekHr:2,
+    trendScore:86, trendDir:"hot",
+    reason:"打率 .305 → 直近 .338 ▲.033 / OPS .878 → .952 ▲.074 / 20歳でAAA定着",
+    spark:[.262,.272,.280,.288,.295,.300,.310,.320,.330,.338] },
+  { id:23, name:"Brady House",         team:"ROC", org:"WSH", pos:"SS", level:"AAA", age:21, isPit:false,
+    avg:.312, ops:.891, hr:6, rbi:22, weekAvg:.345, weekOps:.975, weekHr:3,
+    trendScore:84, trendDir:"hot",
+    reason:"打率 .312 → 直近 .345 ▲.033 / OPS .891 → .975 ▲.084上昇",
+    spark:[.268,.280,.290,.298,.305,.310,.318,.325,.338,.345] },
+  // ── AA
+  { id:30, name:"Dylan Crews",         team:"HBG", org:"WSH", pos:"OF", level:"AA",  age:22, isPit:false,
+    avg:.325, ops:.932, hr:7, rbi:24, weekAvg:.358, weekOps:1.021, weekHr:4,
+    trendScore:94, trendDir:"hot",
+    reason:"打率 .325 → 直近 .358 ▲.033 / OPS .932 → 1.021 ▲.089 / 直近4HR昇格秒読み",
+    spark:[.280,.292,.305,.312,.318,.325,.330,.342,.350,.358] },
+  { id:31, name:"Bubba Chandler",      team:"ALT", org:"PIT", pos:"SP", level:"AA",  age:22, isPit:true,
+    era:1.95, whip:0.82, k9:13.8, ip:23, weekEra:0.75, weekWhip:0.55, weekK:19,
+    trendScore:92, trendDir:"hot",
+    reason:"ERA 1.95 → 直近 0.75 ▼1.20急降下 / WHIP 0.82 → 0.55 / K/9=13.8 直近19K",
+    spark:[2.8,2.3,2.0,1.7,1.4,1.2,0.9,0.8,0.7,0.75] },
+  { id:32, name:"Coby Mayo",           team:"BOW", org:"BAL", pos:"3B", level:"AA",  age:23, isPit:false,
+    avg:.308, ops:.912, hr:8, rbi:25, weekAvg:.342, weekOps:.998, weekHr:3,
+    trendScore:89, trendDir:"hot",
+    reason:"打率 .308 → 直近 .342 ▲.034 / OPS .912 → .998 ▲.086 / AAA昇格目前",
+    spark:[.268,.275,.282,.290,.296,.302,.310,.320,.332,.342] },
+  { id:33, name:"Mick Abel",           team:"REA", org:"PHI", pos:"SP", level:"AA",  age:22, isPit:true,
+    era:2.18, whip:0.92, k9:12.1, ip:21, weekEra:1.05, weekWhip:0.71, weekK:16,
+    trendScore:88, trendDir:"hot",
+    reason:"ERA 2.18 → 直近 1.05 ▼1.13急改善 / WHIP 0.92 → 0.71 / 直近16K",
+    spark:[3.2,2.8,2.5,2.2,2.0,1.8,1.5,1.2,1.0,1.05] },
+  // A+
+  { id:40, name:"Arjun Nimmala",       team:"DUN", org:"TOR", pos:"SS", level:"A+",  age:19, isPit:false,
+    avg:.295, ops:.852, hr:4, rbi:15, weekAvg:.330, weekOps:.935, weekHr:2,
+    trendScore:87, trendDir:"hot",
+    reason:"打率 .295 → 直近 .330 ▲.035 / OPS .852 → .935 ▲.083 / 19歳SSとして規格外",
+    spark:[.255,.262,.270,.278,.282,.288,.295,.308,.318,.330] },
+  { id:41, name:"Kade Anderson",       team:"KAN", org:"HOU", pos:"SP", level:"A+",  age:21, isPit:true,
+    era:1.88, whip:0.82, k9:13.2, ip:19, weekEra:0.90, weekWhip:0.62, weekK:17,
+    trendScore:90, trendDir:"hot",
+    reason:"ERA 1.88 → 直近 0.90 ▼0.98急改善 / WHIP 0.82 → 0.62 / K/9=13.2 HOU筆頭候補",
+    spark:[2.8,2.4,2.1,1.8,1.6,1.4,1.1,1.0,0.9,0.90] },
 ];
 
 const FALLBACK_GAMES = [
@@ -343,6 +464,9 @@ const FALLBACK_GAMES = [
   { away:"ATL", home:"COL", aS:0, hS:0, status:"Live",  inning:"3回表", hot:false, awayRec:"21-11", homeRec:"10-22" },
 ];
 
+// ═══════════════════════════════════════
+// データ読み込み
+// ═══════════════════════════════════════
 async function loadAll() {
   setRefreshSpin(true);
   await Promise.all([loadPlayers(), loadScores()]);
@@ -397,16 +521,38 @@ async function loadScores() {
 function normalizePlayer(p) {
   const isPit = ['SP','RP','P'].includes(p.pos);
   return {
-    id:p.id, name:p.name, team:p.team, org:p.org||p.team,
-    pos:p.pos, level:p.level, age:p.age, isPit,
-    era:p.era, whip:p.whip, k9:p.k9, ip:p.ip,
-    weekEra:p.era, weekWhip:p.whip, weekK:null,
-    avg:p.avg, ops:p.ops, hr:p.hr, rbi:p.rbi,
-    weekAvg:p.avg, weekOps:p.ops, weekHr:null,
-    trendScore:p.trendScore, trendDir:p.trendDir,
-    reason: isPit ? 'ERA '+fmtE(p.era)+' 上位ランク中' : '打率 '+fmtA(p.avg)+' / OPS '+fmtO(p.ops),
+    id: p.id, name: p.name, team: p.team, org: p.org||p.team,
+    pos: p.pos, level: p.level, age: p.age, isPit,
+    era: p.era, whip: p.whip, k9: p.k9, ip: p.ip,
+    weekEra: p.era, weekWhip: p.whip, weekK: null,
+    avg: p.avg, ops: p.ops, hr: p.hr, rbi: p.rbi,
+    weekAvg: p.avg, weekOps: p.ops, weekHr: null,
+    trendScore: p.trendScore, trendDir: p.trendDir,
+    reason: buildReason(p, isPit),
     spark: genSpark(p),
   };
+}
+
+function buildReason(p, isPit) {
+  if (isPit) {
+    const era = p.era != null ? fmtE(p.era) : null;
+    const k9  = p.k9  != null ? p.k9.toFixed(1) : null;
+    const whip = p.whip != null ? fmtE(p.whip) : null;
+    const parts = [];
+    if (era)  parts.push(`ERA ${era}`);
+    if (k9)   parts.push(`K/9 ${k9}`);
+    if (whip) parts.push(`WHIP ${whip}`);
+    return parts.join(' · ') + ' — 直近成績が上位水準';
+  } else {
+    const avg = p.avg != null ? fmtA(p.avg) : null;
+    const ops = p.ops != null ? fmtO(p.ops) : null;
+    const hr  = p.hr  != null ? p.hr+'本塁打' : null;
+    const parts = [];
+    if (avg) parts.push(`打率 ${avg}`);
+    if (ops) parts.push(`OPS ${ops}`);
+    if (hr)  parts.push(hr);
+    return parts.join(' · ') + ' — 直近成績が上位水準';
+  }
 }
 
 function genSpark(p) {
@@ -419,12 +565,18 @@ function genSpark(p) {
   });
 }
 
+// ═══════════════════════════════════════
+// テーブル描画
+// ═══════════════════════════════════════
 function renderTable() {
   const tbl = document.getElementById('trend-table');
-  tbl.querySelectorAll('.trend-row:not(.hdr)').forEach(r=>r.remove());
+  // 既存の行と空メッセージを両方クリア
+  tbl.querySelectorAll('.trend-row:not(.hdr), .tbl-empty').forEach(r=>r.remove());
 
   const list = PLAYERS.filter(p => {
-    const posOk = filt.pos==='all'||p.pos===filt.pos||(filt.pos==='INF'&&['1B','2B','3B','SS'].includes(p.pos));
+    const posOk = filt.pos==='all'||p.pos===filt.pos
+      ||(filt.pos==='INF'&&['1B','2B','3B','SS'].includes(p.pos))
+      ||(filt.pos==='DH'&&p.pos==='DH');
     const lvOk  = filt.levels.includes(p.level);
     const qOk   = !filt.q||p.name.toLowerCase().includes(filt.q)||(p.org||p.team||'').toLowerCase().includes(filt.q);
     return posOk && lvOk && qOk;
@@ -432,6 +584,7 @@ function renderTable() {
 
   if (!list.length) {
     const empty = document.createElement('div');
+    empty.className = 'tbl-empty';
     empty.style.cssText = 'padding:24px;text-align:center;color:var(--text3);font-size:13px;';
     empty.textContent = '条件に一致する選手が見つかりません';
     tbl.appendChild(empty);
@@ -444,6 +597,7 @@ function renderTable() {
     const nc   = p.trendDir==='hot'?'var(--hot)':p.trendDir==='warm'?'var(--warm)':'var(--accent)';
     const lv   = lvBadge(p.level);
 
+    // 変化幅（矢印 + 数値）
     let deltaHtml = '';
     if (p.isPit) {
       const d = ((p.era||0)-(p.weekEra||p.era||0));
@@ -468,7 +622,7 @@ function renderTable() {
     }
 
     const row = document.createElement('div');
-    row.className = 'trend-row'+(selectedId===p.id?' selected':'');
+    row.className = 'trend-row' + (selectedId===p.id?' selected':'');
     row.onclick = () => showDetail(p);
     row.innerHTML = `
       <div class="rank ${i<3?'top':''}">${i+1}</div>
@@ -487,25 +641,30 @@ function renderTable() {
   });
 }
 
+// ═══════════════════════════════════════
+// 詳細パネル描画
+// ═══════════════════════════════════════
 function showDetail(p) {
   selectedId = p.id;
   renderTable();
+
   document.getElementById('d-name').textContent = p.name;
   document.getElementById('d-sub').innerHTML =
     `${p.org||p.team} · ${p.pos}${p.age?' · '+p.age+'歳':''} · <span class="badge-level ${lvBadge(p.level)}">${p.level}</span>`;
 
+  // ── ハイライトボックス（変化幅を大きく表示）
   let hlBoxes;
   if (p.isPit) {
-    const eraD  = (p.era||0)-(p.weekEra||p.era||0);
-    const whipD = (p.whip||0)-(p.weekWhip||p.whip||0);
+    const eraD  = (p.era||0) - (p.weekEra||p.era||0);
+    const whipD = (p.whip||0) - (p.weekWhip||p.whip||0);
     hlBoxes = [
       { lbl:'ERA 改善幅', val:(eraD>=0?'▼':'')+eraD.toFixed(2), sub:fmtE(p.era)+' → '+fmtE(p.weekEra||p.era), cls:eraD>=0?'up':'dn' },
       { lbl:'直近ERA',    val:fmtE(p.weekEra||p.era),            sub:'直近7日',                                  cls:'up' },
       { lbl:'直近K数',    val:(p.weekK||'—')+'K',                sub:'K/9 = '+(p.k9?p.k9.toFixed(1):'—'),       cls:'neu' },
     ];
   } else {
-    const avgD = (p.weekAvg||p.avg||0)-(p.avg||0);
-    const opsD = (p.weekOps||p.ops||0)-(p.ops||0);
+    const avgD = (p.weekAvg||p.avg||0) - (p.avg||0);
+    const opsD = (p.weekOps||p.ops||0) - (p.ops||0);
     hlBoxes = [
       { lbl:'AVG 上昇幅', val:(avgD>=0?'▲':'▼')+fmtA(Math.abs(avgD)), sub:fmtA(p.avg)+' → '+fmtA(p.weekAvg||p.avg), cls:avgD>=0?'up':'dn' },
       { lbl:'OPS 上昇幅', val:(opsD>=0?'▲':'▼')+fmtO(Math.abs(opsD)), sub:fmtO(p.ops)+' → '+fmtO(p.weekOps||p.ops), cls:opsD>=0?'up':'dn' },
@@ -519,23 +678,24 @@ function showDetail(p) {
       <div class="hl-sub">${b.sub}</div>
     </div>`).join('');
 
+  // ── スタットグリッド
   let statBoxes;
   if (p.isPit) {
     const eD = (p.era||0)-(p.weekEra||p.era||0);
     const wD = (p.whip||0)-(p.weekWhip||p.whip||0);
     statBoxes = [
-      { l:'ERA（通算）',  v:fmtE(p.era),              d:'',                                          cls:'neu' },
+      { l:'ERA（通算）',  v:fmtE(p.era),              d:'',                                  cls:'neu' },
       { l:'ERA（直近）',  v:fmtE(p.weekEra||p.era),   d:(eD>=0?'▼':'▲')+Math.abs(eD).toFixed(2)+' 改善', cls:eD>=0?'up':'dn' },
-      { l:'WHIP（直近）', v:fmtE(p.weekWhip||p.whip), d:(wD>=0?'▼':'▲')+Math.abs(wD).toFixed(2),   cls:wD>=0?'up':'dn' },
-      { l:'K/9',          v:p.k9?p.k9.toFixed(1):'—', d:p.ip?p.ip+'IP':'',                          cls:'neu' },
+      { l:'WHIP（直近）', v:fmtE(p.weekWhip||p.whip), d:(wD>=0?'▼':'▲')+Math.abs(wD).toFixed(2),         cls:wD>=0?'up':'dn' },
+      { l:'K/9',          v:p.k9?p.k9.toFixed(1):'—', d:p.ip?p.ip+'IP':'',                  cls:'neu' },
     ];
   } else {
     const aD = (p.weekAvg||p.avg||0)-(p.avg||0);
     const oD = (p.weekOps||p.ops||0)-(p.ops||0);
     statBoxes = [
       { l:'AVG（通算）', v:fmtA(p.avg),            d:'',                                           cls:'neu' },
-      { l:'AVG（直近）', v:fmtA(p.weekAvg||p.avg), d:(aD>=0?'▲':'▼')+fmtA(Math.abs(aD))+' 上昇', cls:aD>=0?'up':'dn' },
-      { l:'OPS（直近）', v:fmtO(p.weekOps||p.ops), d:(oD>=0?'▲':'▼')+fmtO(Math.abs(oD)),         cls:oD>=0?'up':'dn' },
+      { l:'AVG（直近）', v:fmtA(p.weekAvg||p.avg), d:(aD>=0?'▲':'▼')+fmtA(Math.abs(aD))+' 上昇',  cls:aD>=0?'up':'dn' },
+      { l:'OPS（直近）', v:fmtO(p.weekOps||p.ops), d:(oD>=0?'▲':'▼')+fmtO(Math.abs(oD)),          cls:oD>=0?'up':'dn' },
       { l:'HR',          v:p.hr??'—',               d:p.rbi?'RBI '+p.rbi:'',                       cls:'neu' },
     ];
   }
@@ -546,6 +706,7 @@ function showDetail(p) {
       <div class="s-delta ${b.cls}">${b.d||'—'}</div>
     </div>`).join('');
 
+  // ── スパークチャート
   const vals = p.spark || [];
   const mx = Math.max(...vals), mn = Math.min(...vals), rng = mx-mn||0.001;
   document.getElementById('spark-range').textContent =
@@ -561,18 +722,22 @@ function showDetail(p) {
     const isRec  = i >= vals.length-3;
     const isGood = p.isPit ? v<=mn+rng*0.4 : v>=mx-rng*0.4;
     const col    = isRec ? 'var(--accent)' : isGood ? '#1a5c38' : 'var(--bg3)';
-    const wrap   = document.createElement('div');
+
+    const wrap = document.createElement('div');
     wrap.className = 'spark-bar-wrap';
+    const vStr = p.isPit ? v.toFixed(2) : fmtA(v);
     wrap.innerHTML = `
-      <div class="spark-val ${isRec?'hl':''}">${p.isPit ? v.toFixed(2) : fmtA(v)}</div>
+      <div class="spark-val ${isRec?'hl':''}">${vStr}</div>
       <div class="spark-bar" style="height:${h}px;background:${col};width:100%"></div>`;
     sparkRow.appendChild(wrap);
+
     const gl = document.createElement('div');
     gl.className = 'spark-game-lbl';
     gl.textContent = i===0?'G1':i===vals.length-1?'最新':`${i+1}G`;
     lblRow.appendChild(gl);
   });
 
+  // ── サマリー
   const last3  = vals.slice(-3).reduce((a,b)=>a+b,0)/3;
   const first3 = vals.slice(0,3).reduce((a,b)=>a+b,0)/3;
   const change = p.isPit ? first3-last3 : last3-first3;
@@ -608,6 +773,9 @@ function closeDetail() {
   renderTable();
 }
 
+// ═══════════════════════════════════════
+// 試合スコア描画
+// ═══════════════════════════════════════
 function renderGamesSidebar() {
   const container = document.getElementById('live-games');
   let list = GAMES;
@@ -645,6 +813,9 @@ function renderGameCards(container, list) {
   });
 }
 
+// ═══════════════════════════════════════
+// フィルター・ナビゲーション
+// ═══════════════════════════════════════
 function setPos(pos, btn) {
   filt.pos = pos;
   document.querySelectorAll('#pos-filters .filter-btn').forEach(b=>b.classList.remove('on'));
@@ -722,6 +893,9 @@ function showSection(id, btn) {
   if (id==='scores') renderGameCards(document.getElementById('all-games'), GAMES);
 }
 
+// ═══════════════════════════════════════
+// ユーティリティ
+// ═══════════════════════════════════════
 function fmtA(v){ return v!=null ? '.'+String(Math.round(v*1000)).padStart(3,'0') : '.---'; }
 function fmtE(v){ return v!=null ? v.toFixed(2) : '-.-'; }
 function fmtO(v){ return v!=null ? v.toFixed(3) : '.---'; }
@@ -753,9 +927,12 @@ function updateTime(){
   if (el) el.textContent = h+':'+m;
 }
 
+// ═══════════════════════════════════════
+// 起動
+// ═══════════════════════════════════════
 loadAll();
 updateTime();
-setInterval(loadAll, 5 * 60 * 1000);
+setInterval(loadAll, 5 * 60 * 1000); // 5分ごと自動更新
 </script>
 </body>
 </html>
