@@ -1,5 +1,4 @@
-// api/scores.js
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
@@ -21,8 +20,8 @@ export default async function handler(req, res) {
           gamePk:      game.gamePk,
           status:      game.status?.abstractGameState,
           detailStatus:game.status?.detailState || game.status?.statusCode,
-          inning:      ls?.currentInning   || null,
-          inningHalf:  ls?.inningHalf      || null,
+          inning:      ls?.currentInning  || null,
+          inningHalf:  ls?.inningHalf     || null,
           away: {
             abbr:  away?.team?.abbreviation || '',
             name:  away?.team?.teamName     || '',
@@ -45,11 +44,11 @@ export default async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-}
+};
 
 function getTodayEST() {
   const now = new Date();
-  const offset = -4 * 60; // EDT (夏時間)
+  const offset = -4 * 60;
   const est = new Date(now.getTime() + (now.getTimezoneOffset() + offset) * 60000);
   return est.toISOString().slice(0, 10);
 }
