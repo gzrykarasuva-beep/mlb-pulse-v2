@@ -1,11 +1,9 @@
-// api/players.js
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   try {
     const season = 2026;
-
     const sportIds = [
       { id: 1,  level: 'MLB' },
       { id: 11, level: 'AAA' },
@@ -37,10 +35,10 @@ export default async function handler(req, res) {
               level: sport.level,
               age:   null,
               isPit: false,
-              avg:   s.avg      ? parseFloat(s.avg)  : null,
-              ops:   s.ops      ? parseFloat(s.ops)  : null,
-              hr:    s.homeRuns ?? null,
-              rbi:   s.rbi      ?? null,
+              avg:   s.avg       ? parseFloat(s.avg)  : null,
+              ops:   s.ops       ? parseFloat(s.ops)  : null,
+              hr:    s.homeRuns  ?? null,
+              rbi:   s.rbi       ?? null,
               sb:    s.stolenBases ?? null,
             });
           }
@@ -74,7 +72,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // トレンドスコア計算
     const scored = allPlayers.map(p => {
       let score = 50;
       if (!p.isPit) {
@@ -98,7 +95,7 @@ export default async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-}
+};
 
 function pushOrMerge(arr, player) {
   const existing = arr.find(p => p.id === player.id);
