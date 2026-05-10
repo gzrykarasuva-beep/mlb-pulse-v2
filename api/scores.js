@@ -1,14 +1,10 @@
 // api/scores.js
-// MLB Stats API からその日の試合スコアを取得して返す中継関数
-
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   try {
-    // 日付パラメータ（なければ今日）
     const date = req.query.date || getTodayEST();
-
     const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${date}&gameType=R&hydrate=linescore,team`;
     const response = await fetch(url);
     if (!response.ok) throw new Error(`MLB API error: ${response.status}`);
@@ -21,13 +17,12 @@ module.exports = async function handler(req, res) {
         const away = game.teams?.away;
         const home = game.teams?.home;
         const ls   = game.linescore;
-
         games.push({
-          gamePk:   game.gamePk,
-          status:   game.status?.abstractGameState,   // "Live" | "Final" | "Preview"
-          detailStatus: game.status?.detailState || game.status?.statusCode,
-          inning:   ls?.currentInning     || null,
-          inningHalf: ls?.inningHalf      || null,
+          gamePk:      game.gamePk,
+          status:      game.status?.abstractGameState,
+          detailStatus:game.status?.detailState || game.status?.statusCode,
+          inning:      ls?.currentInning   || null,
+          inningHalf:  ls?.inningHalf      || null,
           away: {
             abbr:  away?.team?.abbreviation || '',
             name:  away?.team?.teamName     || '',
@@ -54,8 +49,7 @@ module.exports = async function handler(req, res) {
 
 function getTodayEST() {
   const now = new Date();
-  // EST = UTC-5（夏時間 EDT = UTC-4）
-  const offset = -5 * 60;
+  const offset = -4 * 60; // EDT (夏時間)
   const est = new Date(now.getTime() + (now.getTimezoneOffset() + offset) * 60000);
   return est.toISOString().slice(0, 10);
 }
