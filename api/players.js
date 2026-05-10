@@ -1,10 +1,10 @@
 // api/players.js
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   try {
-    const season = 2025;
+    const season = 2026;
 
     const sportIds = [
       { id: 1,  level: 'MLB' },
@@ -16,100 +16,75 @@ module.exports = async function handler(req, res) {
     const allPlayers = [];
 
     for (const sport of sportIds) {
-      const categories = [
-        { cat: 'battingAverage',     group: 'hitting'  },
-        { cat: 'onBasePlusSlugging', group: 'hitting'  },
-        { cat: 'homeRuns',           group: 'hitting'  },
-        { cat: 'earnedRunAverage',   group: 'pitching' },
-        { cat: 'strikeoutsPer9Inn',  group: 'pitching' },
-      ];
+      const batUrl = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=battingAverage,onBasePlusSlugging,homeRuns&season=${season}&sportId=${sport.id}&limit=20&statGroup=hitting&statType=season`;
+      const pitUrl = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=earnedRunAverage,strikeoutsPer9Inn&season=${season}&sportId=${sport.id}&limit=20&statGroup=pitching&statType=season`;
 
-      for (const { cat, group } of categories) {
-        const url = `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=${cat}&season=${season}&sportId=${sport.id}&limit=20&statGroup=${group}&statType=season`;
-        const res2 = await fetch(url);
-        if (!res2.ok) continue;
-        const data = await res2.json();
+      const [batRes, pitRes] = await Promise.all([fetch(batUrl), fetch(pitUrl)]);
 
-        for (const catObj of (data.leagueLeaders || [])) {
-          for (const leader of (catObj.leaders || [])) {
+      if (batRes.ok) {
+        const batData = await batRes.json();
+        for (const cat of (batData.leagueLeaders || [])) {
+          for (const leader of (cat.leaders || [])) {
             const p = leader.person;
+            const s = leader.stat;
             if (!p?.id) continue;
-            const val = parseFloat(leader.value) || null;
-            const isPit = group === 'pitching';
-
-            const entry = {
+            pushOrMerge(allPlayers, {
               id:    p.id,
               name:  p.fullName,
-              team:  leader.team?.abbreviation || leader.team?.name?.slice(0,3).toUpperCase() || '?',
+              team:  leader.team?.abbreviation || '?',
+              org:   leader.team?.abbreviation || '?',
+              pos:   leader.position?.abbreviation || 'OF',
               level: sport.level,
-              isPit,
-              pos:   isPit ? 'SP' : null,
-              avg:  null, ops: null, hr: null,
-              era:  null, k9: null,
-            };
+              age:   null,
+              isPit: false,
+              avg:   s.avg      ? parseFloat(s.avg)  : null,
+              ops:   s.ops      ? parseFloat(s.ops)  : null,
+              hr:    s.homeRuns ?? null,
+              rbi:   s.rbi      ?? null,
+              sb:    s.stolenBases ?? null,
+            });
+          }
+        }
+      }
 
-            if (cat === 'battingAverage')     entry.avg = val;
-            if (cat === 'onBasePlusSlugging') entry.ops = val;
-            if (cat === 'homeRuns')           entry.hr  = val;
-            if (cat === 'earnedRunAverage')   entry.era = val;
-            if (cat === 'strikeoutsPer9Inn')  entry.k9  = val;
-
-            pushOrMerge(allPlayers, entry);
+      if (pitRes.ok) {
+        const pitData = await pitRes.json();
+        for (const cat of (pitData.leagueLeaders || [])) {
+          for (const leader of (cat.leaders || [])) {
+            const p = leader.person;
+            const s = leader.stat;
+            if (!p?.id) continue;
+            pushOrMerge(allPlayers, {
+              id:    p.id,
+              name:  p.fullName,
+              team:  leader.team?.abbreviation || '?',
+              org:   leader.team?.abbreviation || '?',
+              pos:   leader.position?.abbreviation || 'SP',
+              level: sport.level,
+              age:   null,
+              isPit: true,
+              era:   s.era  ? parseFloat(s.era)  : null,
+              whip:  s.whip ? parseFloat(s.whip) : null,
+              k9:    s.strikeoutsPer9Inn ? parseFloat(s.strikeoutsPer9Inn) : null,
+              ip:    s.inningsPitched   ? parseFloat(s.inningsPitched)    : null,
+              wins:  s.wins ?? null,
+            });
           }
         }
       }
     }
 
-    // 打者のポジション取得（一括）
-    const batters = allPlayers.filter(p => !p.isPit && !p.pos);
-    const ids = [...new Set(batters.map(p => p.id))].slice(0, 60);
-
-    if (ids.length > 0) {
-      const peopleUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids.join(',')}&hydrate=currentTeam`;
-      const peopleRes = await fetch(peopleUrl);
-      if (peopleRes.ok) {
-        const peopleData = await peopleRes.json();
-        for (const person of (peopleData.people || [])) {
-          const player = allPlayers.find(p => p.id === person.id);
-          if (player) {
-            player.pos = person.primaryPosition?.abbreviation || 'OF';
-          }
-        }
-      }
-    }
-
-    // 投手のSP/RP判定
-    const pitchers = allPlayers.filter(p => p.isPit);
-    const pitIds = [...new Set(pitchers.map(p => p.id))].slice(0, 60);
-    if (pitIds.length > 0) {
-      const pitPeopleUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${pitIds.join(',')}&hydrate=currentTeam`;
-      const pitPeopleRes = await fetch(pitPeopleUrl);
-      if (pitPeopleRes.ok) {
-        const pitPeopleData = await pitPeopleRes.json();
-        for (const person of (pitPeopleData.people || [])) {
-          const player = allPlayers.find(p => p.id === person.id);
-          if (player) {
-            const pos = person.primaryPosition?.abbreviation || 'SP';
-            player.pos = (pos === 'RP' || pos === 'CL') ? 'RP' : 'SP';
-          }
-        }
-      }
-    }
-
-    // フォールバック
-    for (const p of allPlayers) {
-      if (!p.pos) p.pos = p.isPit ? 'SP' : 'OF';
-    }
-
+    // トレンドスコア計算
     const scored = allPlayers.map(p => {
       let score = 50;
       if (!p.isPit) {
-        if (p.avg !== null) score += Math.min(30, Math.round((p.avg - 0.250) * 300));
-        if (p.ops !== null) score += Math.min(20, Math.round((p.ops - 0.700) * 40));
+        if (p.avg !== null) score += Math.min(30, Math.round((p.avg  - 0.250) * 300));
+        if (p.ops !== null) score += Math.min(20, Math.round((p.ops  - 0.700) * 40));
         if (p.hr  !== null) score += Math.min(10, p.hr);
       } else {
-        if (p.era !== null) score += Math.min(30, Math.round((4.50 - p.era) * 10));
-        if (p.k9  !== null) score += Math.min(10, Math.round((p.k9  - 8.0)  * 2));
+        if (p.era  !== null) score += Math.min(30, Math.round((4.50 - p.era)  * 10));
+        if (p.whip !== null) score += Math.min(20, Math.round((1.40 - p.whip) * 30));
+        if (p.k9   !== null) score += Math.min(10, Math.round((p.k9  - 8.0)   * 2));
       }
       score = Math.max(0, Math.min(99, score));
       const trendDir = score >= 80 ? 'hot' : score >= 65 ? 'warm' : 'cool';
@@ -123,13 +98,10 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
+}
 
 function pushOrMerge(arr, player) {
   const existing = arr.find(p => p.id === player.id);
-  if (existing) {
-    Object.assign(existing, player);
-  } else {
-    arr.push(player);
-  }
+  if (existing) { Object.assign(existing, player); }
+  else { arr.push(player); }
 }
